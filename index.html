@@ -297,47 +297,7 @@
   <!-- Modals (Register agent uses email/password created by admin) -->
   <div id="registerAgentModal" class="modal"><div class="modal-card"><div style="display:flex;justify-content:space-between;align-items:center"><h3>Register Agent (admin only)</h3><button class="close-modal" data-close="registerAgentModal">&times;</button></div><form id="registerAgentForm" style="margin-top:12px"><div style="display:flex;gap:8px"><input id="newAgentName" class="form-control" placeholder="Full name" required /><input id="newAgentPhone" class="form-control" placeholder="Phone" required /></div><div style="display:flex;gap:8px;margin-top:8px"><input id="newAgentEmail" class="form-control" placeholder="Agent email (for login)" required /><input id="newAgentPassword" class="form-control" placeholder="Temporary password (min 6 chars)" required /></div><div style="margin-top:10px;display:flex;gap:8px"><button class="btn" type="submit">Create Agent</button><button type="button" class="btn-ghost" onclick="document.getElementById('registerAgentForm').reset()">Reset</button></div></form><div class="muted small" style="margin-top:8px">Note: Agent will be created as a Firebase Auth user and added to the system.</div></div></div>
 
-  <div id="addLoanModal" class="modal"><div class="modal-card"><div style="display:flex;justify-content:space-between;align-items:center"><h3>Add Loan Client</h3><button class="close-modal" data-close="addLoanModal">&times;</button></div><form id="addLoanForm" style="margin-top:12px">
-  <div style="display:flex;gap:8px">
-    <input id="clientName" class="form-control" placeholder="Client Full Name" required />
-    <input id="clientGhanaCard" class="form-control" placeholder="GHA-XXXXXXXXX-X" required />
-  </div>
-
-  <div style="display:flex;gap:8px;margin-top:8px">
-    <input id="clientPhone" class="form-control" placeholder="+233XXXXXXXXX" required />
-    <input id="clientAddress" class="form-control" placeholder="Address" />
-  </div>
-
-  <div style="display:flex;gap:8px;margin-top:8px">
-    <input id="clientAmount" class="form-control" type="number" placeholder="Loan Amount (₵)" required />
-    <input id="clientPurpose" class="form-control" placeholder="Purpose" required />
-  </div>
-
-  <div style="margin-top:8px">
-    <label>Passport Picture</label>
-    <input id="clientPhoto" type="file" accept="image/*" capture="environment" class="form-control" />
-    <img id="photoPreview" style="width:80px;height:80px;border-radius:8px;margin-top:8px;display:none" />
-  </div>
-
-  <div style="margin-top:10px">
-    <button class="btn" type="submit">Submit Application</button>
-  </div>
-</form>
-
-<script>
-document.getElementById('clientPhoto').addEventListener('change', function(e){
-  const file = e.target.files[0];
-  if(!file) return;
-  const reader = new FileReader();
-  reader.onload = () => {
-    document.getElementById('photoPreview').src = reader.result;
-    document.getElementById('photoPreview').style.display = 'block';
-    localStorage.setItem('clientPhotoBase64', reader.result);
-  };
-  reader.readAsDataURL(file);
-});
-</script>
-
+  <div id="addLoanModal" class="modal"><div class="modal-card"><div style="display:flex;justify-content:space-between;align-items:center"><h3>Add Loan Client</h3><button class="close-modal" data-close="addLoanModal">&times;</button></div><form id="addLoanForm" style="margin-top:12px"><div style="display:flex;gap:8px"><input id="clientName" class="form-control" placeholder="Client Full Name" required /><input id="clientGhanaCard" class="form-control" placeholder="GHA-XXXXXXXXX-X" required /></div><div style="display:flex;gap:8px;margin-top:8px"><input id="clientPhone" class="form-control" placeholder="+233XXXXXXXXX" required /><input id="clientAddress" class="form-control" placeholder="Address" /></div><div style="display:flex;gap:8px;margin-top:8px"><input id="clientAmount" class="form-control" type="number" placeholder="Loan Amount (₵)" required /><input id="clientPurpose" class="form-control" placeholder="Purpose" required /></div><div style="margin-top:10px"><button class="btn" type="submit">Submit Application</button></div></form></div></div>
 
   <div id="loanDetailsModal" class="modal"><div class="modal-card"><div style="display:flex;justify-content:space-between;align-items:center"><h3>Loan Details</h3><button class="close-modal" data-close="loanDetailsModal">&times;</button></div><div id="loanDetailsContent" style="margin-top:12px"></div></div></div>
 
@@ -532,9 +492,7 @@ function createLoan({ clientName, ghanaCard, phone, address, amount, purpose }, 
   if(loans.find(l=>l.ghanaCard === ghanaCard)) throw new Error('Client with this Ghana Card already exists');
   const settings = lsGet(K_SETTINGS) || { interestRate:10, penaltyRate:5, paymentFrequency:3 };
   const interest = Number(((Number(amount) * settings.interestRate) / 100).toFixed(2));
-  const loan = { id: uid(), clientName, ghanaCard, phone, address, amount:Number(amount),
-  interest, purpose, agentId, status:'pending', createdAt: now(), approvedAt:null,
-  disbursementDate:null, balance:0, nextPaymentDate:null, audit:[], photo };
+  const loan = { id: uid(), clientName, ghanaCard, phone, address, amount:Number(amount), interest, purpose, agentId, status:'pending', createdAt: now(), approvedAt:null, disbursementDate:null, balance:0, nextPaymentDate:null, audit:[] };
   loans.unshift(loan); lsSet(K_LOANS, loans);
   pushNotif(agentId, 'LOAN_SUBMITTED', `Loan for ${clientName} submitted`);
   return { success:true, loanId: loan.id };
@@ -652,9 +610,8 @@ document.getElementById('addLoanForm').addEventListener('submit', async (e) => {
   const address = document.getElementById('clientAddress').value.trim();
   const amount = Number(document.getElementById('clientAmount').value);
   const purpose = document.getElementById('clientPurpose').value.trim();
-const photo = localStorage.getItem('clientPhotoBase64') || null;
   try{
-   const r = createLoan({ clientName, ghanaCard, phone, address, amount, purpose, photo }, currentUser.id);
+    const r = createLoan({ clientName, ghanaCard, phone, address, amount, purpose }, currentUser.id);
     if(r.success){ hideModal('addLoanModal'); document.getElementById('addLoanForm').reset(); showNotification('Application submitted','success'); refreshAll(); }
   }catch(err){ showNotification(err.message || 'Error','error'); }
 });
@@ -677,28 +634,9 @@ document.getElementById('repaymentForm').addEventListener('submit', (e)=>{
   const amount = Number(document.getElementById('repAmount').value);
   const type = document.getElementById('repType').value;
   if(!amount || amount <= 0) return showNotification('Invalid amount','error');
-
-  // ✅ Paystack Integration
-  const handler = PaystackPop.setup({
-    key: 'pk_live_6c49dba40c4aa95938a74589cab5ed687c75fd3a',
-    email: currentUser.email || 'client@eba.com',
-    amount: amount * 100, // in kobo/pesewas
-    currency: 'GHS',
-    ref: 'EBA-' + Date.now(),
-    callback: function(response){
-      const paymentRef = response.reference;
-      const r = createRepayment({ loanId, amount, type }, currentUser.id);
-      if(r.success){
-        hideModal('repaymentModal');
-        showNotification('Payment successful! Ref: '+paymentRef,'success');
-        refreshAll();
-      } else showNotification('Payment recorded but not saved','error');
-    },
-    onClose: function(){
-      showNotification('Payment cancelled','error');
-    }
-  });
-  handler.openIframe();
+  const r = createRepayment({ loanId, amount, type }, currentUser.id);
+  if(r.success){ hideModal('repaymentModal'); showNotification('Repayment recorded','success'); refreshAll(); }
+  else showNotification(r.message || 'Error','error');
 });
 
 document.getElementById('editRepaymentForm').addEventListener('submit',(e)=>{
@@ -1128,6 +1066,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   if(s){ try{ currentUser = JSON.parse(s); showAppForUser(); } catch(e){} }
   refreshAll();
 });
+
 /* show app depending on role */
 function showAppForUser(){
   loginScreen.style.display='none'; app.style.display='block';
@@ -1136,6 +1075,7 @@ function showAppForUser(){
   else { document.getElementById('adminSidebar').style.display='none'; document.getElementById('agentSidebar').style.display='block'; switchTab('agentDashboard'); }
   refreshAll();
 }
+
 /* tab nav helper */
 document.querySelectorAll('.sidebar a').forEach(a => a.addEventListener('click', e => { e.preventDefault(); document.querySelectorAll('.sidebar a').forEach(x=>x.classList.remove('active')); a.classList.add('active'); switchTab(a.dataset.tab); }));
 function switchTab(tabId){ document.querySelectorAll('.tab-section').forEach(s => s.style.display='none'); const sec = document.getElementById(tabId); if(sec) sec.style.display='block'; refreshAll(); }
@@ -1147,6 +1087,6 @@ document.querySelectorAll('.close-modal').forEach(b => b.addEventListener('click
 document.querySelectorAll('.modal').forEach(m => m.addEventListener('click', e => { if(e.target === m) m.style.display='none'; }));
 
 /* End of script */
-<script src="https://js.paystack.co/v1/inline.js"></script>
+</script>
 </body>
 </html>

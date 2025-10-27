@@ -1128,7 +1128,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   if(s){ try{ currentUser = JSON.parse(s); showAppForUser(); } catch(e){} }
   refreshAll();
 });
-
 /* show app depending on role */
 function showAppForUser(){
   loginScreen.style.display='none'; app.style.display='block';
@@ -1137,7 +1136,6 @@ function showAppForUser(){
   else { document.getElementById('adminSidebar').style.display='none'; document.getElementById('agentSidebar').style.display='block'; switchTab('agentDashboard'); }
   refreshAll();
 }
-
 /* tab nav helper */
 document.querySelectorAll('.sidebar a').forEach(a => a.addEventListener('click', e => { e.preventDefault(); document.querySelectorAll('.sidebar a').forEach(x=>x.classList.remove('active')); a.classList.add('active'); switchTab(a.dataset.tab); }));
 function switchTab(tabId){ document.querySelectorAll('.tab-section').forEach(s => s.style.display='none'); const sec = document.getElementById(tabId); if(sec) sec.style.display='block'; refreshAll(); }

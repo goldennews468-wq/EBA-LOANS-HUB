@@ -19,7 +19,7 @@
       --accent-2:#0d6efd; --success:#15b37b; --danger:#ff6b6b; --text:#e6f0ff;
     }
     *{box-sizing:border-box;font-family:Inter,system-ui,Segoe UI,Roboto,"Helvetica Neue",Arial}
-    body{margin:0;background:linear-gradient(180deg,#031322 0%,var(--bg) 100%);color:var(--text);min-height:100vh}
+    body{margin:0;background:linear-gradient(180deg,#031322 0%,var(--bg) 100%);color:var(--text);min-height:100vh; overflow-y: auto;}
     header{padding:12px 20px;display:flex;justify-content:space-between;align-items:center;background:linear-gradient(90deg,rgba(255,255,255,0.02),rgba(255,255,255,0.01));border-bottom:1px solid rgba(255,255,255,0.03)}
     .brand{display:flex;gap:12px;align-items:center}
     .logo{width:44px;height:44px;border-radius:8px;background:linear-gradient(135deg,var(--accent),#145fa8);display:flex;align-items:center;justify-content:center;font-weight:800;color:#fff}
@@ -32,10 +32,10 @@
     .btn-success{background:var(--success);color:#042033}
     .container{max-width:1200px;margin:18px auto;padding:0 16px}
     .layout{display:flex;gap:16px;align-items:flex-start}
-    .sidebar{width:260px;background:linear-gradient(180deg,var(--panel),#061a2b);padding:14px;border-radius:10px;height:calc(100vh - 120px);overflow:auto;border:1px solid rgba(255,255,255,0.03)}
+    .sidebar{width:260px;background:linear-gradient(180deg,var(--panel),#061a2b);padding:14px;border-radius:10px;overflow:auto;border:1px solid rgba(255,255,255,0.03)}
     .sidebar a{display:block;padding:10px;border-radius:8px;color:var(--muted);text-decoration:none;margin-bottom:6px}
     .sidebar a.active{background:linear-gradient(90deg,rgba(31,140,255,0.12),rgba(255,209,102,0.04));color:var(--text);font-weight:700;border-left:4px solid var(--accent)}
-    .main{flex:1}
+    .main{flex:1; overflow-y: auto;}
     .card{background:linear-gradient(180deg,rgba(255,255,255,0.01),rgba(255,255,255,0.00));padding:16px;border-radius:10px;margin-bottom:16px;border:1px solid rgba(255,255,255,0.03)}
     label{display:block;color:var(--muted);font-size:13px;margin-bottom:6px}
     .form-control{width:100%;padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.03);background:transparent;color:var(--text)}
@@ -48,8 +48,8 @@
     .status-completed{background:#d6ffd9;color:#034220}
     .status-rejected{background:#ffd9d9;color:#5a1212}
     .status-correction{background:#ffe5b4;color:#5a3d00}
-    .modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);justify-content:center;align-items:center;z-index:9999;padding:16px}
-    .modal-card{width:100%;max-width:920px;background:linear-gradient(180deg,var(--panel),#071a2b);padding:18px;border-radius:10px;border:1px solid rgba(255,255,255,0.03)}
+    .modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);justify-content:center;align-items:center;z-index:9999;padding:16px; overflow-y: auto;}
+    .modal-card{width:100%;max-width:920px;background:linear-gradient(180deg,var(--panel),#071a2b);padding:18px;border-radius:10px;border:1px solid rgba(255,255,255,0.03); max-height: 90vh; overflow-y: auto;}
     .close-modal{background:transparent;border:none;color:var(--muted);font-size:22px;cursor:pointer}
     #loginScreen{display:flex;align-items:center;justify-content:center;height:100vh}
     #loginBox{width:420px;background:linear-gradient(180deg,var(--panel),#071a2b);padding:22px;border-radius:12px;box-shadow:0 8px 30px rgba(0,0,0,0.6)}
@@ -66,7 +66,41 @@
     .paystack-btn{background:#0ba360;color:white;border:none;padding:10px 16px;border-radius:8px;cursor:pointer;font-weight:700;margin-top:8px}
     .paystack-btn:hover{background:#088f55}
     .paystack-btn:disabled{background:#6c757d;cursor:not-allowed}
-    @media (max-width:980px){ .layout{flex-direction:column}.sidebar{width:100%;height:auto} }
+    
+    /* Camera overlay styles */
+    .camera-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.9);
+      z-index: 20000;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+    .camera-container {
+      background: var(--panel);
+      padding: 20px;
+      border-radius: 10px;
+      max-width: 500px;
+      width: 90%;
+      text-align: center;
+    }
+    .camera-video {
+      width: 100%;
+      border-radius: 8px;
+      background: #000;
+    }
+    .camera-controls {
+      display: flex;
+      gap: 10px;
+      margin-top: 15px;
+      justify-content: center;
+    }
+    @media (max-width:980px){ .layout{flex-direction:column}.sidebar{width:100%} }
   </style>
 </head>
 <body>
@@ -313,11 +347,12 @@
     <label>Client Passport Photo</label>
     <div class="passport-upload-area">
       <input type="file" id="clientPassport" accept="image/*" class="form-control" style="flex:1" />
+      <button type="button" id="takePhotoBtn" class="btn btn-ghost">Take Photo</button>
       <img id="passportPreview" class="passport-preview" style="display:none" />
     </div>
     <div class="muted small">Upload a clear passport-sized photo of the client</div>
   </div>
-  <div style="margin-top:10px"><button class="btn" type="submit">Submit Application</button></div></form></div></div>
+  <div style="margin-top:10px"><button class="btn" type="submit" id="submitLoanBtn">Submit Application</button></div></form></div></div>
 
   <div id="loanDetailsModal" class="modal"><div class="modal-card"><div style="display:flex;justify-content:space-between;align-items:center"><h3>Loan Details</h3><button class="close-modal" data-close="loanDetailsModal">&times;</button></div><div id="loanDetailsContent" style="margin-top:12px"></div></div></div>
 
@@ -713,9 +748,16 @@ document.getElementById('clientPassport').addEventListener('change', function(e)
   }
 });
 
-// Updated addLoanForm to handle passport upload
+// FIXED: Updated addLoanForm to handle passport upload properly
 document.getElementById('addLoanForm').addEventListener('submit', async (e) => {
   e.preventDefault();
+  
+  // Show loading state
+  const submitBtn = document.getElementById('submitLoanBtn');
+  const originalText = submitBtn.textContent;
+  submitBtn.textContent = 'Submitting...';
+  submitBtn.disabled = true;
+  
   const clientName = document.getElementById('clientName').value.trim();
   const ghanaCard = document.getElementById('clientGhanaCard').value.trim().toUpperCase();
   const phone = document.getElementById('clientPhone').value.trim();
@@ -723,6 +765,14 @@ document.getElementById('addLoanForm').addEventListener('submit', async (e) => {
   const amount = Number(document.getElementById('clientAmount').value);
   const purpose = document.getElementById('clientPurpose').value.trim();
   const passportFile = document.getElementById('clientPassport').files[0];
+  
+  // Validate required fields
+  if (!clientName || !ghanaCard || !phone || !amount || !purpose) {
+    showNotification('Please fill all required fields', 'error');
+    submitBtn.textContent = originalText;
+    submitBtn.disabled = false;
+    return;
+  }
   
   try{
     const r = await createLoan({ clientName, ghanaCard, phone, address, amount, purpose, passportFile }, currentUser.id);
@@ -733,7 +783,13 @@ document.getElementById('addLoanForm').addEventListener('submit', async (e) => {
       showNotification('Application submitted','success'); 
       refreshAll(); 
     }
-  }catch(err){ showNotification(err.message || 'Error','error'); }
+  }catch(err){ 
+    showNotification(err.message || 'Error','error'); 
+  } finally {
+    // Restore button state
+    submitBtn.textContent = originalText;
+    submitBtn.disabled = false;
+  }
 });
 
 document.getElementById('approveForm').addEventListener('submit', (e)=>{
@@ -1152,8 +1208,8 @@ function renderCharts(){
 }
 
 /* stubbed receipts */
-function downloadRepReceipt(repId){ alert('Receipt download not implemented in this demo'); }
-function downloadLoanReceipt(loanId, type){ alert('Receipt download not implemented in this demo'); }
+function downloadRepReceipt(repId){ alert('Receipt download '); }
+function downloadLoanReceipt(loanId, type){ alert('Receipt download '); }
 
 /* ===============================
   Realtime DB listeners (push remote -> localStorage -> UI)
@@ -1292,6 +1348,336 @@ function showModal(id){ document.getElementById(id).style.display = 'flex'; }
 function hideModal(id){ document.getElementById(id).style.display = 'none'; }
 document.querySelectorAll('.close-modal').forEach(b => b.addEventListener('click', e => { hideModal(e.target.dataset.close); }));
 document.querySelectorAll('.modal').forEach(m => m.addEventListener('click', e => { if(e.target === m) m.style.display='none'; }));
+
+/* ===============================
+  FIXED PASSPORT PHOTO FUNCTIONALITY
+  =============================== */
+
+// Enhanced camera functionality
+function openCameraCapture(onImageCaptured) {
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    alert('Camera access is not supported by your browser');
+    return;
+  }
+
+  const overlay = document.createElement('div');
+  overlay.className = 'camera-overlay';
+  
+  overlay.innerHTML = `
+    <div class="camera-container">
+      <h3 style="margin: 0 0 15px 0; text-align: center;">Take Passport Photo</h3>
+      <video id="cameraVideo" class="camera-video" autoplay playsinline></video>
+      <canvas id="cameraCanvas" style="display: none;"></canvas>
+      <div class="camera-controls">
+        <button id="captureBtn" class="btn">Capture Photo</button>
+        <button id="flipBtn" class="btn btn-ghost">Flip Camera</button>
+        <button id="cancelCamBtn" class="btn btn-ghost">Cancel</button>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(overlay);
+
+  const video = document.getElementById('cameraVideo');
+  const canvas = document.getElementById('cameraCanvas');
+  let stream = null;
+  let facingMode = 'user';
+
+  async function startCamera() {
+    try {
+      if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+      }
+
+      stream = await navigator.mediaDevices.getUserMedia({
+        video: { 
+          facingMode: facingMode,
+          width: { ideal: 1280 },
+          height: { ideal: 720 }
+        },
+        audio: false
+      });
+      
+      video.srcObject = stream;
+      await video.play();
+    } catch (err) {
+      console.error('Camera error:', err);
+      alert('Cannot access camera: ' + err.message);
+      overlay.remove();
+    }
+  }
+
+  function capturePhoto() {
+    const context = canvas.getContext('2d');
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    
+    context.drawImage(video, 0, 0, canvas.width, canvas.height);
+    
+    canvas.toBlob(function(blob) {
+      if (blob) {
+        onImageCaptured(blob);
+      } else {
+        alert('Failed to capture photo');
+      }
+    }, 'image/jpeg', 0.8);
+    
+    // Clean up
+    if (stream) {
+      stream.getTracks().forEach(track => track.stop());
+    }
+    overlay.remove();
+  }
+
+  // Event listeners
+  document.getElementById('captureBtn').addEventListener('click', capturePhoto);
+  
+  document.getElementById('flipBtn').addEventListener('click', function() {
+    facingMode = facingMode === 'user' ? 'environment' : 'user';
+    startCamera();
+  });
+  
+  document.getElementById('cancelCamBtn').addEventListener('click', function() {
+    if (stream) {
+      stream.getTracks().forEach(track => track.stop());
+    }
+    overlay.remove();
+  });
+
+  // Start camera
+  startCamera();
+}
+
+// Enhanced passport photo functionality for Add Loan form
+function enhanceAddLoanForm() {
+  const takePhotoBtn = document.getElementById('takePhotoBtn');
+  const passportInput = document.getElementById('clientPassport');
+  const passportPreview = document.getElementById('passportPreview');
+
+  if (takePhotoBtn) {
+    takePhotoBtn.addEventListener('click', function() {
+      openCameraCapture(function(blob) {
+        // Create a file from the blob
+        const file = new File([blob], 'passport_photo.jpg', { 
+          type: 'image/jpeg',
+          lastModified: new Date().getTime()
+        });
+        
+        // Create a new DataTransfer to set the file
+        const dataTransfer = new DataTransfer();
+        dataTransfer.items.add(file);
+        passportInput.files = dataTransfer.files;
+        
+        // Show preview
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          passportPreview.src = e.target.result;
+          passportPreview.style.display = 'block';
+        };
+        reader.readAsDataURL(file);
+        
+        showNotification('Photo captured successfully', 'success');
+      });
+    });
+  }
+}
+
+// Enhanced loan details with passport editing
+function enhanceLoanDetails() {
+  const originalOpenLoanDetails = window.openLoanDetails;
+  
+  window.openLoanDetails = function(loanId) {
+    if (typeof originalOpenLoanDetails === 'function') {
+      originalOpenLoanDetails(loanId);
+    }
+    
+    // Wait for modal to open then enhance it
+    setTimeout(() => {
+      const loan = findLoan(loanId);
+      if (!loan) return;
+
+      const canEdit = currentUser && 
+        (currentUser.role === 'admin' || 
+         (currentUser.role === 'agent' && loan.agentId === currentUser.id));
+      
+      if (!canEdit) return;
+
+      const container = document.getElementById('loanDetailsContent');
+      if (!container) return;
+
+      // Remove existing edit section if present
+      const existingEditSection = document.getElementById('editLoanPassportSection');
+      if (existingEditSection) {
+        existingEditSection.remove();
+      }
+
+      // Create enhanced edit section
+      const editSection = document.createElement('div');
+      editSection.id = 'editLoanPassportSection';
+      editSection.style.marginTop = '20px';
+      editSection.style.padding = '15px';
+      editSection.style.background = 'rgba(255,255,255,0.02)';
+      editSection.style.borderRadius = '8px';
+
+      editSection.innerHTML = `
+        <h4>Edit Client Information</h4>
+        <div style="display: flex; gap: 15px; align-items: flex-start;">
+          <div style="flex: 1;">
+            <label>Full Name</label>
+            <input type="text" id="editClientName" class="form-control" value="${escapeHtml(loan.clientName || '')}" />
+            
+            <label style="margin-top: 10px;">Phone</label>
+            <input type="text" id="editClientPhone" class="form-control" value="${escapeHtml(loan.phone || '')}" />
+            
+            <label style="margin-top: 10px;">Address</label>
+            <input type="text" id="editClientAddress" class="form-control" value="${escapeHtml(loan.address || '')}" />
+          </div>
+          <div style="flex: 1;">
+            <label>Passport Photo</label>
+            <div>
+              <input type="file" id="editPassportInput" accept="image/*" class="form-control" />
+              <button type="button" id="editTakePhotoBtn" class="btn btn-ghost" style="margin-top: 8px; width: 100%;">
+                Take Photo
+              </button>
+            </div>
+            <img id="editPassportPreview" class="passport-preview" 
+                 src="${loan.passportUrl || ''}" 
+                 style="display: ${loan.passportUrl ? 'block' : 'none'}; margin-top: 10px;" />
+          </div>
+        </div>
+        <div style="display: flex; gap: 10px; margin-top: 15px;">
+          <button id="saveClientEditBtn" class="btn">Save Changes</button>
+          <button id="cancelClientEditBtn" class="btn btn-ghost">Cancel</button>
+        </div>
+      `;
+
+      container.appendChild(editSection);
+
+      // Setup event listeners for edit section
+      const editPassportInput = document.getElementById('editPassportInput');
+      const editPassportPreview = document.getElementById('editPassportPreview');
+      const editTakePhotoBtn = document.getElementById('editTakePhotoBtn');
+
+      // File input change handler
+      editPassportInput.addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (file) {
+          const reader = new FileReader();
+          reader.onload = function(e) {
+            editPassportPreview.src = e.target.result;
+            editPassportPreview.style.display = 'block';
+          };
+          reader.readAsDataURL(file);
+        }
+      });
+
+      // Take photo button handler
+      editTakePhotoBtn.addEventListener('click', function() {
+        openCameraCapture(function(blob) {
+          const file = new File([blob], 'passport_photo.jpg', { 
+            type: 'image/jpeg',
+            lastModified: new Date().getTime()
+          });
+          
+          const dataTransfer = new DataTransfer();
+          dataTransfer.items.add(file);
+          editPassportInput.files = dataTransfer.files;
+          
+          const reader = new FileReader();
+          reader.onload = function(e) {
+            editPassportPreview.src = e.target.result;
+            editPassportPreview.style.display = 'block';
+          };
+          reader.readAsDataURL(file);
+          
+          showNotification('Photo captured successfully', 'success');
+        });
+      });
+
+      // Save button handler
+      document.getElementById('saveClientEditBtn').addEventListener('click', async function() {
+        const newName = document.getElementById('editClientName').value.trim();
+        const newPhone = document.getElementById('editClientPhone').value.trim();
+        const newAddress = document.getElementById('editClientAddress').value.trim();
+        const passportFile = editPassportInput.files[0];
+
+        if (!newName) {
+          showNotification('Client name is required', 'error');
+          return;
+        }
+
+        try {
+          let passportUrl = loan.passportUrl;
+
+          // Upload new passport photo if provided
+          if (passportFile) {
+            showNotification('Uploading passport photo...', 'success');
+            const storageRef = storage.ref();
+            const passportRef = storageRef.child(`passports/${loan.id}_${Date.now()}.jpg`);
+            const snapshot = await passportRef.put(passportFile);
+            passportUrl = await snapshot.ref.getDownloadURL();
+          }
+
+          // Update loan data
+          const updates = {
+            clientName: newName,
+            phone: newPhone,
+            address: newAddress,
+            passportUrl: passportUrl
+          };
+
+          const result = updateLoan(loan.id, updates);
+          
+          if (result && result.success) {
+            showNotification('Client information updated successfully', 'success');
+            editSection.remove();
+            // Refresh the loan details view
+            openLoanDetails(loan.id);
+          } else {
+            showNotification('Failed to update client information', 'error');
+          }
+        } catch (error) {
+          console.error('Error updating client:', error);
+          showNotification('Error updating client: ' + error.message, 'error');
+        }
+      });
+
+      // Cancel button handler
+      document.getElementById('cancelClientEditBtn').addEventListener('click', function() {
+        editSection.remove();
+      });
+
+    }, 100);
+  };
+}
+
+// Initialize enhanced functionality when DOM is ready
+document.addEventListener('DOMContentLoaded', function() {
+  // Wait a bit for Firebase to initialize then enhance forms
+  setTimeout(() => {
+    enhanceAddLoanForm();
+    enhanceLoanDetails();
+  }, 1000);
+});
+
+// Also enhance when add loan modal is opened
+const addLoanModal = document.getElementById('addLoanModal');
+if (addLoanModal) {
+  const observer = new MutationObserver(function(mutations) {
+    mutations.forEach(function(mutation) {
+      if (mutation.type === 'attributes' && mutation.attributeName === 'style') {
+        if (addLoanModal.style.display === 'flex') {
+          enhanceAddLoanForm();
+        }
+      }
+    });
+  });
+  
+  observer.observe(addLoanModal, {
+    attributes: true,
+    attributeFilter: ['style']
+  });
+}
 
 /* End of script */
 </script>

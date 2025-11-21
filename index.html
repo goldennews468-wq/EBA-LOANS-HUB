@@ -12,6 +12,8 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
   <!-- Paystack -->
   <script src="https://js.paystack.co/v1/inline.js"></script>
+  <!-- Supabase -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
   <style>
     :root{
@@ -392,10 +394,7 @@
       const s3 = document.createElement('script');
       s3.src = "https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js";
       s3.onload = () => { 
-        const s4 = document.createElement('script');
-        s4.src = "https://www.gstatic.com/firebasejs/9.22.1/firebase-storage-compat.js";
-        s4.onload = () => { window._firebaseReady = true; };
-        document.head.appendChild(s4);
+        window._firebaseReady = true; 
       };
       document.head.appendChild(s3);
     };
@@ -415,6 +414,21 @@ const firebaseConfig = {
   appId: "1:406151539685:web:28c631ba2721f1b28fdd0c"
 };
 
+/* ---------- Supabase Storage Configuration ---------- */
+const supabaseUrl = 'https://dbkgugifuaxlwvivoscy.supabase.co';
+const supabaseKey = 'sb_publishable_6WhDgn_QlGv07_FimLB8yA_oylfv4zY';
+let supabaseClient = null;
+
+// Initialize Supabase
+function initSupabase() {
+  if (window.supabase) {
+    supabaseClient = window.supabase.createClient(supabaseUrl, supabaseKey);
+    console.log('Supabase initialized successfully');
+  } else {
+    console.error('Supabase JS library not loaded');
+  }
+}
+
 /* wait and init firebase */
 async function waitForFirebaseInit(timeout = 8000){
   const start = Date.now();
@@ -424,7 +438,8 @@ async function waitForFirebaseInit(timeout = 8000){
     if(!firebase.apps || !firebase.apps.length) firebase.initializeApp(firebaseConfig);
     window.auth = firebase.auth();
     window.db = firebase.database();
-    window.storage = firebase.storage();
+    // Initialize Supabase
+    initSupabase();
     return true;
   } catch(e){ console.warn('firebase init error', e); return false; }
 }
@@ -459,6 +474,71 @@ function money(n){ return '₵' + (Number(n)||0).toLocaleString(); }
 function ghanaCardValid(s){ return /^GHA-[0-9]{9}-[0-9]$/.test(s); }
 function escapeHtml(s){ if(s==null) return ''; return String(s).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;'); }
 function showNotification(msg, type='success'){ const n=document.getElementById('notification'); const m=document.getElementById('notificationMessage'); n.className = `notification ${type} show`; m.textContent = msg; setTimeout(()=> n.className='notification', 3000); }
+
+/* ---------- Supabase Storage Functions ---------- */
+
+// Upload passport image to Supabase Storage
+async function uploadPassportToSupabase(file, loanId) {
+  if (!supabaseClient) {
+    throw new Error('Supabase not initialized');
+  }
+
+  try {
+    // Generate unique file name
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${loanId}_${uid()}.${fileExt}`;
+    const filePath = `passports/${fileName}`;
+
+    // Upload file to Supabase Storage
+    const { data, error } = await supabaseClient.storage
+      .from('passports')
+      .upload(filePath, file, {
+        cacheControl: '3600',
+        upsert: false
+      });
+
+    if (error) {
+      console.error('Supabase upload error:', error);
+      throw new Error(`Upload failed: ${error.message}`);
+    }
+
+    // Get public URL
+    const { data: { publicUrl } } = supabaseClient.storage
+      .from('passports')
+      .getPublicUrl(filePath);
+
+    if (!publicUrl) {
+      throw new Error('Could not get public URL for uploaded file');
+    }
+
+    return publicUrl;
+  } catch (error) {
+    console.error('Error uploading to Supabase:', error);
+    throw new Error(`Failed to upload passport image: ${error.message}`);
+  }
+}
+
+// Delete passport image from Supabase Storage
+async function deletePassportFromSupabase(imageUrl) {
+  if (!supabaseClient || !imageUrl) return;
+
+  try {
+    // Extract file path from URL
+    const urlParts = imageUrl.split('/');
+    const fileName = urlParts[urlParts.length - 1];
+    const filePath = `passports/${fileName}`;
+
+    const { error } = await supabaseClient.storage
+      .from('passports')
+      .remove([filePath]);
+
+    if (error) {
+      console.warn('Failed to delete old passport image:', error);
+    }
+  } catch (error) {
+    console.warn('Error deleting passport image:', error);
+  }
+}
 
 /* ---------- App state ---------- */
 let currentUser = null; // { uid, id (same), email, role, fullName, createdAt }
@@ -555,7 +635,7 @@ document.getElementById('registerAgentForm').addEventListener('submit', async (e
 function listUsers(){ return lsGet(K_USERS) || []; }
 function listAgents(){ return lsGet(K_AGENTS) || []; }
 
-// Updated createLoan function to handle passport upload
+// Updated createLoan function to handle passport upload with Supabase
 async function createLoan({ clientName, ghanaCard, phone, address, amount, purpose, passportFile }, agentId){
   if(!ghanaCardValid(ghanaCard)) throw new Error('Invalid Ghana Card format (GHA-XXXXXXXXX-X)');
   const loans = lsGet(K_LOANS) || [];
@@ -563,22 +643,22 @@ async function createLoan({ clientName, ghanaCard, phone, address, amount, purpo
   const settings = lsGet(K_SETTINGS) || { interestRate:10, penaltyRate:5, paymentFrequency:3 };
   const interest = Number(((Number(amount) * settings.interestRate) / 100).toFixed(2));
   
-  // Upload passport image to Firebase Storage if provided
+  // Generate loan ID first
+  const loanId = uid();
+  
+  // Upload passport image to Supabase Storage if provided
   let passportUrl = '';
   if (passportFile) {
     try {
-      const storageRef = storage.ref();
-      const passportRef = storageRef.child(`passports/${uid()}_${passportFile.name}`);
-      const snapshot = await passportRef.put(passportFile);
-      passportUrl = await snapshot.ref.getDownloadURL();
+      passportUrl = await uploadPassportToSupabase(passportFile, loanId);
     } catch (error) {
       console.error('Error uploading passport:', error);
-      throw new Error('Failed to upload passport image');
+      throw new Error('Failed to upload passport image: ' + error.message);
     }
   }
   
   const loan = { 
-    id: uid(), 
+    id: loanId, 
     clientName, 
     ghanaCard, 
     phone, 
@@ -608,6 +688,33 @@ function updateLoan(loanId, updates){
   loans[idx] = { ...loans[idx], ...updates }; lsSet(K_LOANS, loans);
   if(currentUser) pushNotif(currentUser.id, 'LOAN_UPDATED', `Loan ${loanId} updated`);
   return { success:true };
+}
+
+// Enhanced update loan function with passport handling
+async function updateLoanWithPassport(loanId, updates, newPassportFile) {
+  const loan = findLoan(loanId);
+  if (!loan) return { success: false, message: 'Loan not found' };
+
+  let passportUrl = loan.passportUrl;
+
+  // If new passport file provided, upload it and delete old one
+  if (newPassportFile) {
+    try {
+      // Delete old passport if exists
+      if (passportUrl) {
+        await deletePassportFromSupabase(passportUrl);
+      }
+      
+      // Upload new passport
+      passportUrl = await uploadPassportToSupabase(newPassportFile, loanId);
+      updates.passportUrl = passportUrl;
+    } catch (error) {
+      console.error('Error updating passport:', error);
+      return { success: false, message: 'Failed to update passport image: ' + error.message };
+    }
+  }
+
+  return updateLoan(loanId, updates);
 }
 
 function approveLoan(loanId, disbursementDate){
@@ -648,6 +755,14 @@ function takedownLoanForCorrection(loanId){
 
 function deleteLoan(loanId){
   let loans = lsGet(K_LOANS) || []; const loan = loans.find(l=>l.id===loanId);
+  
+  // Delete passport image from Supabase if exists
+  if (loan && loan.passportUrl) {
+    deletePassportFromSupabase(loan.passportUrl).catch(err => 
+      console.warn('Failed to delete passport image for loan:', loanId, err)
+    );
+  }
+  
   loans = loans.filter(l=>l.id!==loanId); lsSet(K_LOANS, loans);
   let reps = lsGet(K_REPS) || []; reps = reps.filter(r=>r.loanId !== loanId); lsSet(K_REPS, reps);
   if(currentUser) pushNotif(currentUser.id, 'LOAN_DELETED', `Loan ${loanId} removed`);
@@ -748,7 +863,7 @@ document.getElementById('clientPassport').addEventListener('change', function(e)
   }
 });
 
-// FIXED: Updated addLoanForm to handle passport upload properly
+// FIXED: Updated addLoanForm to handle passport upload properly with Supabase
 document.getElementById('addLoanForm').addEventListener('submit', async (e) => {
   e.preventDefault();
   
@@ -1048,10 +1163,12 @@ function openLoanDetails(loanId){
   showModal('loanDetailsModal');
 }
 
-function openEditLoan(loanId){
+// Enhanced edit loan function with Supabase storage
+async function openEditLoan(loanId){
   const loan = findLoan(loanId);
   if(!loan) return;
   if(currentUser && currentUser.role==='agent' && loan.agentId !== currentUser.id) return showNotification('Not allowed','error');
+  
   const clientName = prompt('Client name', loan.clientName);
   if(clientName===null) return;
   const phone = prompt('Phone', loan.phone || '');
@@ -1064,8 +1181,42 @@ function openEditLoan(loanId){
   if(purpose===null) return;
   const amount = Number(amountStr);
   if(isNaN(amount) || amount <= 0) return showNotification('Invalid amount','error');
-  updateLoan(loanId, { clientName, phone, address, amount, purpose });
-  showNotification('Loan updated','success'); refreshAll(); hideModal('loanDetailsModal');
+  
+  // Ask if user wants to update passport photo
+  let newPassportFile = null;
+  if (confirm('Do you want to update the passport photo?')) {
+    const fileInput = document.createElement('input');
+    fileInput.type = 'file';
+    fileInput.accept = 'image/*';
+    fileInput.style.display = 'none';
+    document.body.appendChild(fileInput);
+    
+    const filePromise = new Promise((resolve) => {
+      fileInput.onchange = (e) => {
+        const file = e.target.files[0];
+        document.body.removeChild(fileInput);
+        resolve(file);
+      };
+    });
+    
+    fileInput.click();
+    newPassportFile = await filePromise;
+  }
+  
+  const updates = { clientName, phone, address, amount, purpose };
+  
+  try {
+    const result = await updateLoanWithPassport(loanId, updates, newPassportFile);
+    if (result && result.success) {
+      showNotification('Loan updated','success'); 
+      refreshAll(); 
+      hideModal('loanDetailsModal');
+    } else {
+      showNotification(result.message || 'Error updating loan','error');
+    }
+  } catch (error) {
+    showNotification('Error updating loan: ' + error.message, 'error');
+  }
 }
 
 function openApprove(loanId){ document.getElementById('approveLoanId').value = loanId; document.getElementById('disbursementDate').value = ''; showModal('approveModal'); }
@@ -1350,7 +1501,7 @@ document.querySelectorAll('.close-modal').forEach(b => b.addEventListener('click
 document.querySelectorAll('.modal').forEach(m => m.addEventListener('click', e => { if(e.target === m) m.style.display='none'; }));
 
 /* ===============================
-  FIXED PASSPORT PHOTO FUNCTIONALITY
+  FIXED PASSPORT PHOTO FUNCTIONALITY WITH SUPABASE
   =============================== */
 
 // Enhanced camera functionality
@@ -1607,26 +1758,13 @@ function enhanceLoanDetails() {
         }
 
         try {
-          let passportUrl = loan.passportUrl;
-
-          // Upload new passport photo if provided
-          if (passportFile) {
-            showNotification('Uploading passport photo...', 'success');
-            const storageRef = storage.ref();
-            const passportRef = storageRef.child(`passports/${loan.id}_${Date.now()}.jpg`);
-            const snapshot = await passportRef.put(passportFile);
-            passportUrl = await snapshot.ref.getDownloadURL();
-          }
-
-          // Update loan data
           const updates = {
             clientName: newName,
             phone: newPhone,
-            address: newAddress,
-            passportUrl: passportUrl
+            address: newAddress
           };
 
-          const result = updateLoan(loan.id, updates);
+          const result = await updateLoanWithPassport(loan.id, updates, passportFile);
           
           if (result && result.success) {
             showNotification('Client information updated successfully', 'success');
@@ -1634,7 +1772,7 @@ function enhanceLoanDetails() {
             // Refresh the loan details view
             openLoanDetails(loan.id);
           } else {
-            showNotification('Failed to update client information', 'error');
+            showNotification('Failed to update client information: ' + (result.message || 'Unknown error'), 'error');
           }
         } catch (error) {
           console.error('Error updating client:', error);

@@ -1359,8 +1359,200 @@ function renderCharts(){
 }
 
 /* stubbed receipts */
-function downloadRepReceipt(repId){ alert('Receipt download '); }
-function downloadLoanReceipt(loanId, type){ alert('Receipt download '); }
+<script>
+/* ---------------------------
+  Receipt PDFs (using jsPDF + autoTable)
+  Replace the stubbed functions with these.
+   - Requires jspdf (window.jspdf) and autoTable plugin (doc.autoTable)
+---------------------------*/
+
+function safeNumber(n){ return (Number(n)||0).toFixed(2); }
+
+function downloadRepReceipt(repId){
+  try{
+    const reps = lsGet(K_REPS) || [];
+    const r = reps.find(x => x.id === repId);
+    if(!r) return showNotification('Repayment not found','error');
+
+    const loan = findLoan(r.loanId);
+    const agents = lsGet(K_AGENTS) || [];
+    const agent = agents.find(a => a.id === (r.agentId||''));
+    // jsPDF (UMD) exposes window.jspdf; get the constructor
+    const { jsPDF } = window.jspdf || window.jspdf || {};
+    if(!jsPDF){
+      // fallback: simple alert
+      return showNotification('PDF library not available','error');
+    }
+    const doc = new jsPDF({ unit:'pt', format:'A4' });
+
+    // Header
+    doc.setFontSize(18);
+    doc.setTextColor(20,30,48);
+    doc.text('EBA LOANS HUB', 40, 50);
+    doc.setFontSize(12);
+    doc.setTextColor(90,100,120);
+    doc.text('Receipt — Repayment', 40, 72);
+
+    // Meta
+    doc.setFontSize(10);
+    const y0 = 100;
+    doc.text(`Receipt ID: ${r.id}`, 40, y0);
+    doc.text(`Date: ${new Date(r.date).toLocaleString()}`, 40, y0 + 14);
+    doc.text(`Payment Method: ${r.paymentMethod || 'manual'}`, 40, y0 + 28);
+    if (r.paystackRef) doc.text(`Paystack Ref: ${r.paystackRef}`, 40, y0 + 42);
+
+    // Loan / client
+    const leftColX = 40;
+    const rightColX = 320;
+    let y = y0 + 70;
+    doc.setFontSize(11);
+    doc.text('Client / Loan', leftColX, y);
+    doc.setFontSize(10);
+    doc.text(`Client: ${loan ? loan.clientName : (r.clientName || '-')}`, leftColX, y + 14);
+    doc.text(`GhanaCard: ${loan ? (loan.ghanaCard || '-') : '-'}`, leftColX, y + 28);
+    doc.text(`Loan ID: ${r.loanId}`, leftColX, y + 42);
+
+    doc.text('Agent', rightColX, y);
+    doc.setFontSize(10);
+    doc.text(`Agent: ${agent ? agent.name || agent.email : (r.agentId || '-')}`, rightColX, y + 14);
+    doc.text(`Agent ID: ${r.agentId}`, rightColX, y + 28);
+
+    // Amount box
+    const amountY = y + 80;
+    doc.setDrawColor(200);
+    doc.rect(leftColX, amountY - 12, 500, 56); // x,y,w,h
+    doc.setFontSize(12);
+    doc.text('Amount Paid', leftColX + 8, amountY);
+    doc.setFontSize(18);
+    doc.setTextColor(0,80,160);
+    doc.text(`₵${safeNumber(r.amount)}`, leftColX + 8, amountY + 28);
+
+    // Footnote / audit
+    doc.setFontSize(9);
+    doc.setTextColor(110,110,110);
+    let footY = amountY + 90;
+    doc.text(`Recorded by: ${r.agentId || '-'}`, leftColX, footY);
+    doc.text(`Type: ${r.type}`, leftColX + 220, footY);
+    doc.text(`Balance (current): ${loan ? '₵' + safeNumber(loan.balance) : '-'}`, leftColX + 400, footY);
+
+    // Optional: small thank you
+    doc.setFontSize(10);
+    doc.setTextColor(120,120,120);
+    doc.text('Thank you for your payment — EBA Loans Hub', 40, footY + 36);
+
+    // Save file
+    const fileName = `repayment_${r.id}.pdf`;
+    doc.save(fileName);
+    showNotification('Receipt downloaded','success');
+  } catch(err){
+    console.error('downloadRepReceipt error', err);
+    showNotification('Could not generate receipt','error');
+  }
+}
+
+function downloadLoanReceipt(loanId, type){
+  try{
+    const loan = findLoan(loanId);
+    if(!loan) return showNotification('Loan not found','error');
+
+    const reps = (lsGet(K_REPS) || []).filter(r => r.loanId === loanId);
+    const agents = lsGet(K_AGENTS) || [];
+    const agent = agents.find(a => a.id === loan.agentId) || {};
+    const { jsPDF } = window.jspdf || window.jspdf || {};
+    if(!jsPDF) return showNotification('PDF library not available','error');
+
+    const doc = new jsPDF({ unit:'pt', format:'A4' });
+    doc.setFontSize(18);
+    doc.setTextColor(20,30,48);
+    doc.text('EBA LOANS HUB', 40, 50);
+    doc.setFontSize(12);
+    doc.setTextColor(90,100,120);
+
+    if(type === 'disbursement'){
+      doc.text('Loan Disbursement Receipt', 40, 72);
+      doc.setFontSize(10);
+      doc.text(`Loan ID: ${loan.id}`, 40, 96);
+      doc.text(`Client: ${loan.clientName}`, 40, 110);
+      doc.text(`GhanaCard: ${loan.ghanaCard || '-'}`, 40, 124);
+      doc.text(`Agent: ${agent.name || agent.email || loan.agentId}`, 40, 138);
+      doc.text(`Disbursement Date: ${loan.disbursementDate ? new Date(loan.disbursementDate).toLocaleDateString() : '-'}`, 40, 152);
+
+      const yStart = 180;
+      doc.setFontSize(11);
+      doc.text(`Amount Disbursed: ₵${safeNumber(loan.amount)}`, 40, yStart);
+      doc.text(`Interest: ₵${safeNumber(loan.interest)}`, 40, yStart + 16);
+      doc.text(`Total Payable: ₵${safeNumber(Number(loan.amount || 0) + Number(loan.interest || 0))}`, 40, yStart + 32);
+      doc.text(`Balance: ₵${safeNumber(loan.balance || 0)}`, 40, yStart + 48);
+      doc.setFontSize(10);
+      doc.setTextColor(120,120,120);
+      doc.text('This serves as proof of disbursement', 40, yStart + 88);
+      const fileName = `loan_disbursement_${loan.id}.pdf`;
+      doc.save(fileName);
+      showNotification('Disbursement receipt downloaded','success');
+      return;
+    }
+
+    // type === 'repayments' (list all repayments for the loan)
+    doc.text('Loan Repayments Report', 40, 72);
+    doc.setFontSize(10);
+    doc.text(`Loan ID: ${loan.id}`, 40, 96);
+    doc.text(`Client: ${loan.clientName}`, 40, 110);
+    doc.text(`GhanaCard: ${loan.ghanaCard || '-'}`, 40, 124);
+    doc.text(`Agent: ${agent.name || agent.email || loan.agentId}`, 40, 138);
+    const startY = 160;
+
+    // Prepare table rows
+    const tableCols = [
+      { header: 'ID', dataKey: 'id' },
+      { header: 'Date', dataKey: 'date' },
+      { header: 'Amount (₵)', dataKey: 'amount' },
+      { header: 'Type', dataKey: 'type' },
+      { header: 'Method', dataKey: 'method' },
+      { header: 'Ref', dataKey: 'ref' }
+    ];
+    const tableRows = reps.map(r => ({
+      id: r.id,
+      date: new Date(r.date).toLocaleString(),
+      amount: safeNumber(r.amount),
+      type: r.type,
+      method: r.paymentMethod || 'manual',
+      ref: r.paystackRef || '-'
+    }));
+
+    // If autoTable is available, use it. Otherwise create a simple text list.
+    if (typeof doc.autoTable === 'function') {
+      doc.autoTable({
+        startY: startY + 8,
+        head: [tableCols.map(c => c.header)],
+        body: tableRows.map(row => tableCols.map(c => row[c.dataKey])),
+        styles: { fontSize: 9 },
+        headStyles: { fillColor: [31,140,255] },
+        theme: 'grid',
+        margin: { left: 40, right: 40 }
+      });
+      const fileName = `loan_repayments_${loan.id}.pdf`;
+      doc.save(fileName);
+      showNotification('Repayments report downloaded','success');
+    } else {
+      // Fallback simple list
+      let y = startY + 12;
+      doc.setFontSize(10);
+      if(tableRows.length === 0){
+        doc.text('No repayments recorded for this loan.', 40, y);
+      } else {
+        tableRows.forEach(tr => {
+          if(y > 750){ doc.addPage(); y = 40; }
+          doc.text(`${tr.date} — ₵${tr.amount} — ${tr.type} — ${tr.method} — ${tr.ref}`, 40, y);
+          y += 14;
+        });
+      }
+      const fileName = `loan_repayments_${loan.id}.pdf`;
+      doc.save(fileName);
+      showNotification('Repayments report downloaded','success');
+    }
+  } catch(err){
+    console.error('downloadLoanReceipt error', err);
+    showNotification('Could not generate receipt','error');}
 
 /* ===============================
   Realtime DB listeners (push remote -> localStorage -> UI)

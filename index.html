@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>EBA LOANS HUB — Auth + Realtime</title>
+  <title>EBA LOANS HUB </title>
 
   <!-- Chart.js -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
@@ -32,6 +32,7 @@
     .btn-ghost{background:transparent;border:1px solid rgba(255,255,255,0.04);color:var(--muted)}
     .btn-danger{background:var(--danger);color:white}
     .btn-success{background:var(--success);color:#042033}
+    .btn-warning{background:#ffc107;color:#000}
     .container{max-width:1200px;margin:18px auto;padding:0 16px}
     .layout{display:flex;gap:16px;align-items:flex-start}
     .sidebar{width:260px;background:linear-gradient(180deg,var(--panel),#061a2b);padding:14px;border-radius:10px;overflow:auto;border:1px solid rgba(255,255,255,0.03)}
@@ -50,6 +51,7 @@
     .status-completed{background:#d6ffd9;color:#034220}
     .status-rejected{background:#ffd9d9;color:#5a1212}
     .status-correction{background:#ffe5b4;color:#5a3d00}
+    .status-overdue{background:#ff6b6b;color:#5a1212}
     .modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);justify-content:center;align-items:center;z-index:9999;padding:16px; overflow-y: auto;}
     .modal-card{width:100%;max-width:920px;background:linear-gradient(180deg,var(--panel),#071a2b);padding:18px;border-radius:10px;border:1px solid rgba(255,255,255,0.03); max-height: 90vh; overflow-y: auto;}
     .close-modal{background:transparent;border:none;color:var(--muted);font-size:22px;cursor:pointer}
@@ -102,6 +104,54 @@
       margin-top: 15px;
       justify-content: center;
     }
+    
+    /* Repayment date styles */
+    .repayment-date {
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .repayment-date.overdue {
+      color: var(--danger);
+      font-weight: 700;
+    }
+    
+    /* Receipt modal styles */
+    .receipt-container {
+      background: white;
+      color: #000;
+      padding: 20px;
+      border-radius: 8px;
+      max-width: 500px;
+      margin: 0 auto;
+    }
+    .receipt-header {
+      text-align: center;
+      border-bottom: 2px solid #000;
+      padding-bottom: 15px;
+      margin-bottom: 15px;
+    }
+    .receipt-logo {
+      font-size: 24px;
+      font-weight: 800;
+      color: var(--accent);
+      margin-bottom: 5px;
+    }
+    .receipt-details {
+      margin-bottom: 15px;
+    }
+    .receipt-row {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 5px;
+    }
+    .receipt-footer {
+      border-top: 1px dashed #000;
+      padding-top: 15px;
+      text-align: center;
+      font-size: 12px;
+      color: #666;
+    }
+    
     @media (max-width:980px){ .layout{flex-direction:column}.sidebar{width:100%} }
   </style>
 </head>
@@ -202,7 +252,14 @@
             <div class="card">
               <h3>Recent Loan Activities</h3>
               <div style="overflow:auto;margin-top:8px">
-                <table id="recentTable"><thead><tr><th>Client</th><th>GhanaCard</th><th>Amount</th><th>Agent</th><th>Date</th><th>Status</th><th>Actions</th></tr></thead><tbody id="recentBody"></tbody></table>
+                <table id="recentTable"><thead><tr><th>Client</th><th>GhanaCard</th><th>Amount</th><th>Agent</th><th>Date</th><th>Next Payment</th><th>Status</th><th>Actions</th></tr></thead><tbody id="recentBody"></tbody></table>
+              </div>
+            </div>
+            
+            <div class="card">
+              <h3>Overdue Loans</h3>
+              <div style="overflow:auto;margin-top:8px">
+                <table id="overdueTable"><thead><tr><th>Client</th><th>GhanaCard</th><th>Amount</th><th>Overdue Days</th><th>Penalty</th><th>Next Payment</th><th>Actions</th></tr></thead><tbody id="overdueBody"></tbody></table>
               </div>
             </div>
           </section>
@@ -240,7 +297,14 @@
             <div class="card">
               <h3>My Recent Loans</h3>
               <div style="overflow:auto">
-                <table id="agentRecentTable"><thead><tr><th>Client</th><th>Amount</th><th>Date</th><th>Status</th><th>Actions</th></tr></thead><tbody id="agentRecentBody"></tbody></table>
+                <table id="agentRecentTable"><thead><tr><th>Client</th><th>Amount</th><th>Date</th><th>Next Payment</th><th>Status</th><th>Actions</th></tr></thead><tbody id="agentRecentBody"></tbody></table>
+              </div>
+            </div>
+            
+            <div class="card">
+              <h3>My Overdue Loans</h3>
+              <div style="overflow:auto">
+                <table id="agentOverdueTable"><thead><tr><th>Client</th><th>Amount</th><th>Overdue Days</th><th>Penalty</th><th>Next Payment</th><th>Actions</th></tr></thead><tbody id="agentOverdueBody"></tbody></table>
               </div>
             </div>
           </section>
@@ -272,7 +336,7 @@
           <section id="loans" class="tab-section" style="display:none">
             <div class="card">
               <h3>All Loans</h3>
-              <div style="overflow:auto"><table id="allLoansTable"><thead><tr><th>ID</th><th>Client</th><th>GhanaCard</th><th>Agent</th><th>Amount</th><th>Balance</th><th>Disbursed</th><th>Status</th><th>Actions</th></tr></thead><tbody id="allLoansBody"></tbody></table></div>
+              <div style="overflow:auto"><table id="allLoansTable"><thead><tr><th>ID</th><th>Client</th><th>GhanaCard</th><th>Agent</th><th>Amount</th><th>Balance</th><th>Next Payment</th><th>Status</th><th>Actions</th></tr></thead><tbody id="allLoansBody"></tbody></table></div>
             </div>
           </section>
 
@@ -288,7 +352,7 @@
           <section id="myLoans" class="tab-section" style="display:none">
             <div class="card">
               <h3>My Loans</h3>
-              <div style="overflow:auto"><table id="myLoansTable"><thead><tr><th>ID</th><th>Client</th><th>Amount</th><th>Status</th><th>Actions</th></tr></thead><tbody id="myLoansBody"></tbody></table></div>
+              <div style="overflow:auto"><table id="myLoansTable"><thead><tr><th>ID</th><th>Client</th><th>Amount</th><th>Balance</th><th>Next Payment</th><th>Status</th><th>Actions</th></tr></thead><tbody id="myLoansBody"></tbody></table></div>
             </div>
           </section>
 
@@ -321,7 +385,7 @@
               <form id="settingsForm">
                 <div style="display:flex;gap:12px">
                   <div style="flex:1"><label>Interest Rate (%)</label><input id="interestRate" class="form-control" type="number" value="10" required></div>
-                  <div style="flex:1"><label>Penalty Rate (%)</label><input id="penaltyRate" class="form-control" type="number" value="5" required></div>
+                  <div style="flex:1"><label>Penalty Rate (₵)</label><input id="penaltyRate" class="form-control" type="number" value="50" required></div>
                   <div style="flex:1"><label>Payment Frequency (months)</label><input id="paymentFrequency" class="form-control" type="number" value="3" required></div>
                 </div>
                 <div style="margin-top:12px"><button class="btn" type="submit">Save</button></div>
@@ -356,6 +420,20 @@
   </div>
   <div style="margin-top:10px"><button class="btn" type="submit" id="submitLoanBtn">Submit Application</button></div></form></div></div>
 
+  <!-- Edit Loan Modal -->
+  <div id="editLoanModal" class="modal"><div class="modal-card"><div style="display:flex;justify-content:space-between;align-items:center"><h3>Edit Loan Client</h3><button class="close-modal" data-close="editLoanModal">&times;</button></div><form id="editLoanForm" style="margin-top:12px"><input type="hidden" id="editLoanId" /><div style="display:flex;gap:8px"><input id="editClientName" class="form-control" placeholder="Client Full Name" required /><input id="editClientGhanaCard" class="form-control" placeholder="GHA-XXXXXXXXX-X" required /></div><div style="display:flex;gap:8px;margin-top:8px"><input id="editClientPhone" class="form-control" placeholder="+233XXXXXXXXX" required /><input id="editClientAddress" class="form-control" placeholder="Address" /></div><div style="display:flex;gap:8px;margin-top:8px"><input id="editClientAmount" class="form-control" type="number" placeholder="Loan Amount (₵)" required /><input id="editClientPurpose" class="form-control" placeholder="Purpose" required /></div>
+  <!-- Passport Upload Section -->
+  <div style="margin-top:12px">
+    <label>Client Passport Photo</label>
+    <div class="passport-upload-area">
+      <input type="file" id="editClientPassport" accept="image/*" class="form-control" style="flex:1" />
+      <button type="button" id="editTakePhotoBtn" class="btn btn-ghost">Take Photo</button>
+      <img id="editPassportPreview" class="passport-preview" style="display:none" />
+    </div>
+    <div class="muted small">Upload a clear passport-sized photo of the client</div>
+  </div>
+  <div style="margin-top:10px"><button class="btn" type="submit" id="submitEditLoanBtn">Update Loan</button></div></form></div></div>
+
   <div id="loanDetailsModal" class="modal"><div class="modal-card"><div style="display:flex;justify-content:space-between;align-items:center"><h3>Loan Details</h3><button class="close-modal" data-close="loanDetailsModal">&times;</button></div><div id="loanDetailsContent" style="margin-top:12px"></div></div></div>
 
   <div id="approveModal" class="modal"><div class="modal-card"><div style="display:flex;justify-content:space-between;align-items:center"><h3>Approve Loan — Disbursement Date</h3><button class="close-modal" data-close="approveModal">&times;</button></div><form id="approveForm" style="margin-top:12px"><input type="hidden" id="approveLoanId" /><div><label>Disbursement Date</label><input id="disbursementDate" type="date" class="form-control" required /></div><div style="margin-top:10px;display:flex;gap:8px"><button class="btn" type="submit">Approve & Disburse</button><button type="button" class="btn-ghost" data-close="approveModal">Cancel</button></div></form></div></div>
@@ -372,6 +450,8 @@
   <div id="editRepaymentModal" class="modal"><div class="modal-card"><div style="display:flex;justify-content:space-between;align-items:center"><h3>Edit Repayment</h3><button class="close-modal" data-close="editRepaymentModal">&times;</button></div><form id="editRepaymentForm" style="margin-top:12px"><input type="hidden" id="editRepId" /><div style="display:flex;gap:8px"><input id="editRepAmount" class="form-control" placeholder="Amount" type="number" required /><select id="editRepType" class="form-control"><option value="principal">Principal</option><option value="interest">Interest</option><option value="penalty">Penalty</option></select></div><div style="margin-top:8px" id="editRepBalanceHint" class="muted"></div><div style="margin-top:10px;display:flex;gap:8px"><button class="btn" type="submit">Save Changes</button><button type="button" class="btn-ghost" data-close="editRepaymentModal">Cancel</button></div></form></div></div>
 
   <div id="notificationsModal" class="modal"><div class="modal-card"><div style="display:flex;justify-content:space-between;align-items:center"><h3>Notifications</h3><button class="close-modal" data-close="notificationsModal">&times;</button></div><div id="notificationsList" style="max-height:480px;overflow:auto;margin-top:12px;padding:8px;background:rgba(255,255,255,0.02);border-radius:8px"></div></div></div>
+
+  <div id="receiptModal" class="modal"><div class="modal-card"><div style="display:flex;justify-content:space-between;align-items:center"><h3>Receipt</h3><button class="close-modal" data-close="receiptModal">&times;</button></div><div id="receiptContent" style="margin-top:12px"></div><div style="margin-top:12px;text-align:center"><button id="downloadReceiptBtn" class="btn">Download Receipt</button></div></div></div>
 
   <div id="notification" class="notification"><div id="notificationMessage">Done</div></div>
 
@@ -630,8 +710,6 @@ document.getElementById('registerAgentForm').addEventListener('submit', async (e
 
 /* ---------- Data functions (loans, reps, agents) ---------- */
 
-/* Keep previous array-based data functions (they read from localStorage which is kept in sync with Firebase via listeners) */
-
 function listUsers(){ return lsGet(K_USERS) || []; }
 function listAgents(){ return lsGet(K_AGENTS) || []; }
 
@@ -640,7 +718,7 @@ async function createLoan({ clientName, ghanaCard, phone, address, amount, purpo
   if(!ghanaCardValid(ghanaCard)) throw new Error('Invalid Ghana Card format (GHA-XXXXXXXXX-X)');
   const loans = lsGet(K_LOANS) || [];
   if(loans.find(l=>l.ghanaCard === ghanaCard)) throw new Error('Client with this Ghana Card already exists');
-  const settings = lsGet(K_SETTINGS) || { interestRate:10, penaltyRate:5, paymentFrequency:3 };
+  const settings = lsGet(K_SETTINGS) || { interestRate:10, penaltyRate:50, paymentFrequency:3 };
   const interest = Number(((Number(amount) * settings.interestRate) / 100).toFixed(2));
   
   // Generate loan ID first
@@ -674,7 +752,8 @@ async function createLoan({ clientName, ghanaCard, phone, address, amount, purpo
     balance:0, 
     nextPaymentDate:null, 
     audit:[],
-    passportUrl // Store the passport URL
+    passportUrl, // Store the passport URL
+    penalties: 0 // Track penalty fees
   };
   
   loans.unshift(loan); 
@@ -837,6 +916,303 @@ function pushNotif(user, title, body){
 }
 
 /* ===============================
+  NEW FEATURES IMPLEMENTATION
+  =============================== */
+
+/* 1. Next Repayment Date and Penalty System */
+function checkOverdueLoans() {
+  const loans = lsGet(K_LOANS) || [];
+  const settings = lsGet(K_SETTINGS) || { penaltyRate: 50 };
+  let updated = false;
+  
+  loans.forEach(loan => {
+    if (loan.status === 'active' && loan.nextPaymentDate) {
+      const nextPayment = new Date(loan.nextPaymentDate);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      
+      // If loan is overdue
+      if (nextPayment < today) {
+        const daysOverdue = Math.floor((today - nextPayment) / (1000 * 60 * 60 * 24));
+        
+        // Check if we've already applied penalty for this overdue period
+        // We'll apply penalty once per week of being overdue
+        const penaltyWeeks = Math.floor(daysOverdue / 7);
+        const expectedPenalties = penaltyWeeks;
+        const appliedPenalties = (loan.audit || []).filter(a => a.type === 'penalty').length;
+        
+        if (expectedPenalties > appliedPenalties) {
+          // Apply penalty
+          const penaltyAmount = settings.penaltyRate || 50;
+          loan.balance += penaltyAmount;
+          loan.penalties = (loan.penalties || 0) + penaltyAmount;
+          
+          loan.audit = loan.audit || [];
+          loan.audit.push({
+            ts: now(),
+            by: 'system',
+            type: 'penalty',
+            note: `Auto penalty of ₵${penaltyAmount} for overdue payment (${daysOverdue} days overdue)`
+          });
+          
+          pushNotif(loan.agentId, 'LOAN_PENALTY', `Penalty of ₵${penaltyAmount} applied to ${loan.clientName}'s loan for overdue payment`);
+          updated = true;
+        }
+      }
+    }
+  });
+  
+  if (updated) {
+    lsSet(K_LOANS, loans);
+    refreshAll();
+  }
+}
+
+/* 2. Enhanced Receipt System */
+function generateReceipt(type, data) {
+  let receiptHtml = '';
+  
+  if (type === 'loan_disbursement') {
+    receiptHtml = `
+      <div class="receipt-container">
+        <div class="receipt-header">
+          <div class="receipt-logo">EBA LOANS HUB</div>
+          <div>Official Receipt</div>
+          <div>Loan Disbursement</div>
+        </div>
+        <div class="receipt-details">
+          <div class="receipt-row">
+            <div>Receipt No:</div>
+            <div>${data.id}</div>
+          </div>
+          <div class="receipt-row">
+            <div>Date:</div>
+            <div>${new Date(data.disbursementDate).toLocaleDateString()}</div>
+          </div>
+          <div class="receipt-row">
+            <div>Client:</div>
+            <div>${escapeHtml(data.clientName)}</div>
+          </div>
+          <div class="receipt-row">
+            <div>Ghana Card:</div>
+            <div>${escapeHtml(data.ghanaCard)}</div>
+          </div>
+          <div class="receipt-row">
+            <div>Loan Amount:</div>
+            <div>${money(data.amount)}</div>
+          </div>
+          <div class="receipt-row">
+            <div>Interest (${data.interestRate}%):</div>
+            <div>${money(data.interest)}</div>
+          </div>
+          <div class="receipt-row" style="font-weight:bold;border-top:1px solid #000;padding-top:5px;">
+            <div>Total Amount:</div>
+            <div>${money(data.amount + data.interest)}</div>
+          </div>
+          <div class="receipt-row">
+            <div>Next Payment Date:</div>
+            <div>${new Date(data.nextPaymentDate).toLocaleDateString()}</div>
+          </div>
+        </div>
+        <div class="receipt-footer">
+          <div>Thank you for choosing EBA LOANS HUB</div>
+          <div>Contact: +233 XXX XXX XXX | Email: ebaloanshub@gmail.com</div>
+        </div>
+      </div>
+    `;
+  } else if (type === 'repayment') {
+    receiptHtml = `
+      <div class="receipt-container">
+        <div class="receipt-header">
+          <div class="receipt-logo">EBA LOANS HUB</div>
+          <div>Official Receipt</div>
+          <div>Loan Repayment</div>
+        </div>
+        <div class="receipt-details">
+          <div class="receipt-row">
+            <div>Receipt No:</div>
+            <div>${data.id}</div>
+          </div>
+          <div class="receipt-row">
+            <div>Date:</div>
+            <div>${new Date(data.date).toLocaleDateString()}</div>
+          </div>
+          <div class="receipt-row">
+            <div>Client:</div>
+            <div>${escapeHtml(data.clientName)}</div>
+          </div>
+          <div class="receipt-row">
+            <div>Loan ID:</div>
+            <div>${data.loanId}</div>
+          </div>
+          <div class="receipt-row">
+            <div>Payment Type:</div>
+            <div>${data.type}</div>
+          </div>
+          <div class="receipt-row">
+            <div>Payment Method:</div>
+            <div>${data.paymentMethod || 'Manual'}</div>
+          </div>
+          <div class="receipt-row" style="font-weight:bold;border-top:1px solid #000;padding-top:5px;">
+            <div>Amount Paid:</div>
+            <div>${money(data.amount)}</div>
+          </div>
+          ${data.paystackRef ? `<div class="receipt-row"><div>Transaction Ref:</div><div>${data.paystackRef}</div></div>` : ''}
+        </div>
+        <div class="receipt-footer">
+          <div>Thank you for your payment</div>
+          <div>Contact: +233 XXX XXX XXX | Email: ebaloanshub@gmail.com</div>
+        </div>
+      </div>
+    `;
+  }
+  
+  return receiptHtml;
+}
+
+function downloadReceipt(type, data) {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+  
+  // Add content to PDF based on receipt type
+  doc.setFontSize(20);
+  doc.text('EBA LOANS HUB', 105, 20, { align: 'center' });
+  doc.setFontSize(12);
+  doc.text('Official Receipt', 105, 30, { align: 'center' });
+  
+  if (type === 'loan_disbursement') {
+    doc.text('Loan Disbursement Receipt', 105, 40, { align: 'center' });
+    
+    let y = 60;
+    doc.text(`Receipt No: ${data.id}`, 20, y);
+    doc.text(`Date: ${new Date(data.disbursementDate).toLocaleDateString()}`, 20, y + 10);
+    doc.text(`Client: ${data.clientName}`, 20, y + 20);
+    doc.text(`Ghana Card: ${data.ghanaCard}`, 20, y + 30);
+    doc.text(`Loan Amount: ${money(data.amount)}`, 20, y + 40);
+    doc.text(`Interest: ${money(data.interest)}`, 20, y + 50);
+    doc.text(`Total Amount: ${money(data.amount + data.interest)}`, 20, y + 60);
+    doc.text(`Next Payment: ${new Date(data.nextPaymentDate).toLocaleDateString()}`, 20, y + 70);
+  } else if (type === 'repayment') {
+    doc.text('Loan Repayment Receipt', 105, 40, { align: 'center' });
+    
+    let y = 60;
+    doc.text(`Receipt No: ${data.id}`, 20, y);
+    doc.text(`Date: ${new Date(data.date).toLocaleDateString()}`, 20, y + 10);
+    doc.text(`Client: ${data.clientName}`, 20, y + 20);
+    doc.text(`Loan ID: ${data.loanId}`, 20, y + 30);
+    doc.text(`Payment Type: ${data.type}`, 20, y + 40);
+    doc.text(`Payment Method: ${data.paymentMethod || 'Manual'}`, 20, y + 50);
+    doc.text(`Amount Paid: ${money(data.amount)}`, 20, y + 60);
+    if (data.paystackRef) {
+      doc.text(`Transaction Ref: ${data.paystackRef}`, 20, y + 70);
+    }
+  }
+  
+  // Footer
+  doc.setFontSize(10);
+  doc.text('Thank you for choosing EBA LOANS HUB', 105, 260, { align: 'center' });
+  doc.text('Contact: +233 XXX XXX XXX | Email: ebaloanshub@gmail.com', 105, 270, { align: 'center' });
+  
+  // Save the PDF
+  doc.save(`receipt_${data.id}.pdf`);
+}
+
+/* 3. Camera Functionality */
+function openCameraCapture(onImageCaptured) {
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    alert('Camera access is not supported by your browser');
+    return;
+  }
+
+  const overlay = document.createElement('div');
+  overlay.className = 'camera-overlay';
+  
+  overlay.innerHTML = `
+    <div class="camera-container">
+      <h3 style="margin: 0 0 15px 0; text-align: center;">Take Passport Photo</h3>
+      <video id="cameraVideo" class="camera-video" autoplay playsinline></video>
+      <canvas id="cameraCanvas" style="display: none;"></canvas>
+      <div class="camera-controls">
+        <button id="captureBtn" class="btn">Capture Photo</button>
+        <button id="flipBtn" class="btn btn-ghost">Flip Camera</button>
+        <button id="cancelCamBtn" class="btn btn-ghost">Cancel</button>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(overlay);
+
+  const video = document.getElementById('cameraVideo');
+  const canvas = document.getElementById('cameraCanvas');
+  let stream = null;
+  let facingMode = 'user';
+
+  async function startCamera() {
+    try {
+      if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+      }
+
+      stream = await navigator.mediaDevices.getUserMedia({
+        video: { 
+          facingMode: facingMode,
+          width: { ideal: 1280 },
+          height: { ideal: 720 }
+        },
+        audio: false
+      });
+      
+      video.srcObject = stream;
+      await video.play();
+    } catch (err) {
+      console.error('Camera error:', err);
+      alert('Cannot access camera: ' + err.message);
+      overlay.remove();
+    }
+  }
+
+  function capturePhoto() {
+    const context = canvas.getContext('2d');
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    
+    context.drawImage(video, 0, 0, canvas.width, canvas.height);
+    
+    canvas.toBlob(function(blob) {
+      if (blob) {
+        onImageCaptured(blob);
+      } else {
+        alert('Failed to capture photo');
+      }
+    }, 'image/jpeg', 0.8);
+    
+    // Clean up
+    if (stream) {
+      stream.getTracks().forEach(track => track.stop());
+    }
+    overlay.remove();
+  }
+
+  // Event listeners
+  document.getElementById('captureBtn').addEventListener('click', capturePhoto);
+  
+  document.getElementById('flipBtn').addEventListener('click', function() {
+    facingMode = facingMode === 'user' ? 'environment' : 'user';
+    startCamera();
+  });
+  
+  document.getElementById('cancelCamBtn').addEventListener('click', function() {
+    if (stream) {
+      stream.getTracks().forEach(track => track.stop());
+    }
+    overlay.remove();
+  });
+
+  // Start camera
+  startCamera();
+}
+
+/* ===============================
   UI wiring & interactions
   =============================== */
 
@@ -863,7 +1239,74 @@ document.getElementById('clientPassport').addEventListener('change', function(e)
   }
 });
 
-// FIXED: Updated addLoanForm to handle passport upload properly with Supabase
+// Edit loan passport preview functionality
+document.getElementById('editClientPassport').addEventListener('change', function(e) {
+  const file = e.target.files[0];
+  const preview = document.getElementById('editPassportPreview');
+  
+  if (file) {
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      preview.src = e.target.result;
+      preview.style.display = 'block';
+    };
+    reader.readAsDataURL(file);
+  }
+});
+
+// Camera capture for passport photo in add loan modal
+document.getElementById('takePhotoBtn').addEventListener('click', function() {
+  openCameraCapture(function(blob) {
+    // Create a file from the blob
+    const file = new File([blob], 'passport_photo.jpg', { 
+      type: 'image/jpeg',
+      lastModified: new Date().getTime()
+    });
+    
+    // Create a new DataTransfer to set the file
+    const dataTransfer = new DataTransfer();
+    dataTransfer.items.add(file);
+    document.getElementById('clientPassport').files = dataTransfer.files;
+    
+    // Show preview
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      document.getElementById('passportPreview').src = e.target.result;
+      document.getElementById('passportPreview').style.display = 'block';
+    };
+    reader.readAsDataURL(file);
+    
+    showNotification('Photo captured successfully', 'success');
+  });
+});
+
+// Camera capture for passport photo in edit loan modal
+document.getElementById('editTakePhotoBtn').addEventListener('click', function() {
+  openCameraCapture(function(blob) {
+    // Create a file from the blob
+    const file = new File([blob], 'passport_photo.jpg', { 
+      type: 'image/jpeg',
+      lastModified: new Date().getTime()
+    });
+    
+    // Create a new DataTransfer to set the file
+    const dataTransfer = new DataTransfer();
+    dataTransfer.items.add(file);
+    document.getElementById('editClientPassport').files = dataTransfer.files;
+    
+    // Show preview
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      document.getElementById('editPassportPreview').src = e.target.result;
+      document.getElementById('editPassportPreview').style.display = 'block';
+    };
+    reader.readAsDataURL(file);
+    
+    showNotification('Photo captured successfully', 'success');
+  });
+});
+
+// Add Loan Form
 document.getElementById('addLoanForm').addEventListener('submit', async (e) => {
   e.preventDefault();
   
@@ -907,6 +1350,57 @@ document.getElementById('addLoanForm').addEventListener('submit', async (e) => {
   }
 });
 
+// Edit Loan Form
+document.getElementById('editLoanForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  
+  // Show loading state
+  const submitBtn = document.getElementById('submitEditLoanBtn');
+  const originalText = submitBtn.textContent;
+  submitBtn.textContent = 'Updating...';
+  submitBtn.disabled = true;
+  
+  const loanId = document.getElementById('editLoanId').value;
+  const clientName = document.getElementById('editClientName').value.trim();
+  const ghanaCard = document.getElementById('editClientGhanaCard').value.trim().toUpperCase();
+  const phone = document.getElementById('editClientPhone').value.trim();
+  const address = document.getElementById('editClientAddress').value.trim();
+  const amount = Number(document.getElementById('editClientAmount').value);
+  const purpose = document.getElementById('editClientPurpose').value.trim();
+  const passportFile = document.getElementById('editClientPassport').files[0];
+  
+  // Validate required fields
+  if (!clientName || !ghanaCard || !phone || !amount || !purpose) {
+    showNotification('Please fill all required fields', 'error');
+    submitBtn.textContent = originalText;
+    submitBtn.disabled = false;
+    return;
+  }
+  
+  const updates = { clientName, ghanaCard, phone, address, amount, purpose };
+  
+  try {
+    const result = await updateLoanWithPassport(loanId, updates, passportFile);
+    if (result && result.success) {
+      hideModal('editLoanModal');
+      showNotification('Loan updated successfully', 'success');
+      refreshAll();
+      // Also refresh loan details modal if open
+      if (document.getElementById('loanDetailsModal').style.display === 'flex') {
+        openLoanDetails(loanId);
+      }
+    } else {
+      showNotification(result.message || 'Error updating loan', 'error');
+    }
+  } catch (error) {
+    showNotification('Error updating loan: ' + error.message, 'error');
+  } finally {
+    // Restore button state
+    submitBtn.textContent = originalText;
+    submitBtn.disabled = false;
+  }
+});
+
 document.getElementById('approveForm').addEventListener('submit', (e)=>{
   e.preventDefault();
   const loanId = document.getElementById('approveLoanId').value;
@@ -943,7 +1437,11 @@ document.getElementById('editRepaymentForm').addEventListener('submit',(e)=>{
 
 document.getElementById('settingsForm').addEventListener('submit',(e)=>{
   e.preventDefault();
-  const s = { interestRate: Number(document.getElementById('interestRate').value), penaltyRate: Number(document.getElementById('penaltyRate').value), paymentFrequency: Number(document.getElementById('paymentFrequency').value) };
+  const s = { 
+    interestRate: Number(document.getElementById('interestRate').value), 
+    penaltyRate: Number(document.getElementById('penaltyRate').value), 
+    paymentFrequency: Number(document.getElementById('paymentFrequency').value) 
+  };
   lsSet(K_SETTINGS, s);
   showNotification('Settings saved','success');
 });
@@ -1044,30 +1542,81 @@ document.getElementById('paystackBtn').addEventListener('click', function(e) {
 let loanChart=null, repChart=null, agentLoanChart=null, agentRepChart=null;
 
 function refreshAll(){
+  // Check for overdue loans first
+  checkOverdueLoans();
+  
   const agents = lsGet(K_AGENTS) || [];
   const loans = lsGet(K_LOANS) || [];
   const reps = lsGet(K_REPS) || [];
+  
   document.getElementById('kpiTotalAgents').textContent = agents.filter(a=>!a.deleted).length;
   document.getElementById('kpiTotalLoans').textContent = loans.length;
   document.getElementById('kpiActiveLoans').textContent = loans.filter(l=>l.status==='active').length;
   document.getElementById('kpiTotalRepayments').textContent = money(reps.reduce((s,r)=>s+Number(r.amount||0),0));
 
   // recent
-  const recentBody = document.getElementById('recentBody'); if(recentBody){ recentBody.innerHTML = ''; loans.slice(0,40).forEach(l => {
-    const ag = agents.find(a=>a.id===l.agentId) || {};
-    recentBody.innerHTML += `<tr>
-      <td>${escapeHtml(l.clientName)}</td>
-      <td>${escapeHtml(l.ghanaCard)}</td>
-      <td>${money(l.amount)}</td>
-      <td>${escapeHtml(ag.name||ag.username||ag.email||'')}</td>
-      <td>${new Date(l.createdAt).toLocaleDateString()}</td>
-      <td><span class="badge ${l.status==='pending'?'status-pending':l.status==='active'?'status-active':l.status==='completed'?'status-completed':l.status==='rejected'?'status-rejected':'status-correction'}">${l.status}</span></td>
-      <td>
-        <button class="btn-sm" onclick="openLoanDetails('${l.id}')">View</button>
-        ${l.status==='pending' && currentUser && currentUser.role==='admin' ? ` <button class="btn-sm btn" onclick="openApprove('${l.id}')">Approve</button> <button class="btn-sm btn-danger" onclick="handleReject('${l.id}')">Reject</button>` : (l.status==='active'?` <button class="btn-sm btn" onclick="openLoanDetails('${l.id}')">Record Repayment</button>` : (l.status==='correction' && currentUser && currentUser.role==='admin'?` <button class="btn-sm btn" onclick="openApprove('${l.id}')">Approve</button>`:''))}
-      </td>
-    </tr>`;
-  }); }
+  const recentBody = document.getElementById('recentBody'); 
+  if(recentBody){ 
+    recentBody.innerHTML = ''; 
+    loans.slice(0,40).forEach(l => {
+      const ag = agents.find(a=>a.id===l.agentId) || {};
+      const today = new Date();
+      const nextPayment = l.nextPaymentDate ? new Date(l.nextPaymentDate) : null;
+      const isOverdue = nextPayment && nextPayment < today;
+      const daysOverdue = isOverdue ? Math.floor((today - nextPayment) / (1000 * 60 * 60 * 24)) : 0;
+      
+      const nextPaymentHtml = l.nextPaymentDate ? 
+        `<div class="repayment-date ${isOverdue ? 'overdue' : ''}">
+          ${new Date(l.nextPaymentDate).toLocaleDateString()}
+          ${isOverdue ? ` (${daysOverdue} days overdue)` : ''}
+        </div>` : '-';
+      
+      recentBody.innerHTML += `<tr>
+        <td>${escapeHtml(l.clientName)}</td>
+        <td>${escapeHtml(l.ghanaCard)}</td>
+        <td>${money(l.amount)}</td>
+        <td>${escapeHtml(ag.name||ag.username||ag.email||'')}</td>
+        <td>${new Date(l.createdAt).toLocaleDateString()}</td>
+        <td>${nextPaymentHtml}</td>
+        <td><span class="badge ${l.status==='pending'?'status-pending':l.status==='active'?'status-active':l.status==='completed'?'status-completed':l.status==='rejected'?'status-rejected':'status-correction'}">${l.status}</span></td>
+        <td>
+          <button class="btn-sm" onclick="openLoanDetails('${l.id}')">View</button>
+          ${l.status==='pending' && currentUser && currentUser.role==='admin' ? ` <button class="btn-sm btn" onclick="openApprove('${l.id}')">Approve</button> <button class="btn-sm btn-danger" onclick="handleReject('${l.id}')">Reject</button>` : (l.status==='active'?` <button class="btn-sm btn" onclick="openLoanDetails('${l.id}')">Record Repayment</button>` : (l.status==='correction' && currentUser && currentUser.role==='admin'?` <button class="btn-sm btn" onclick="openApprove('${l.id}')">Approve</button>`:''))}
+        </td>
+      </tr>`;
+    }); 
+  }
+
+  // overdue loans
+  const overdueBody = document.getElementById('overdueBody');
+  if (overdueBody) {
+    overdueBody.innerHTML = '';
+    const today = new Date();
+    const overdueLoans = loans.filter(l => {
+      if (l.status !== 'active' || !l.nextPaymentDate) return false;
+      return new Date(l.nextPaymentDate) < today;
+    });
+    
+    if (overdueLoans.length === 0) {
+      overdueBody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:20px" class="muted">No overdue loans</td></tr>`;
+    } else {
+      overdueLoans.forEach(l => {
+        const nextPayment = new Date(l.nextPaymentDate);
+        const daysOverdue = Math.floor((today - nextPayment) / (1000 * 60 * 60 * 24));
+        const penaltyAmount = l.penalties || 0;
+        
+        overdueBody.innerHTML += `<tr>
+          <td>${escapeHtml(l.clientName)}</td>
+          <td>${escapeHtml(l.ghanaCard)}</td>
+          <td>${money(l.amount)}</td>
+          <td>${daysOverdue}</td>
+          <td>${money(penaltyAmount)}</td>
+          <td>${new Date(l.nextPaymentDate).toLocaleDateString()}</td>
+          <td><button class="btn-sm btn-warning" onclick="openRepaymentModal('${l.id}')">Record Payment</button></td>
+        </tr>`;
+      });
+    }
+  }
 
   // agents table
   const agentsBody = document.getElementById('agentsBody'); if(agentsBody){ agentsBody.innerHTML = ''; agents.filter(a=>!a.deleted).forEach(a => agentsBody.innerHTML += `<tr><td>${a.id}</td><td>${escapeHtml(a.name)}</td><td>${escapeHtml(a.email||a.username||'')}</td><td>${escapeHtml(a.phone)}</td><td>${a.loansProcessed||0}</td><td><button class="btn-sm" onclick="handleEditAgent('${a.id}')">Edit</button> <button class="btn-sm btn-ghost" onclick="handleResetAgentPwd('${a.id}')">Reset Pwd</button> <button class="btn-sm btn-danger" onclick="handleSoftDeleteAgent('${a.id}')">Delete</button></td></tr>`); }
@@ -1083,30 +1632,129 @@ function refreshAll(){
   // all loans
   const allLoansBody = document.getElementById('allLoansBody'); if(allLoansBody){ allLoansBody.innerHTML=''; loans.forEach(l=>{
     const ag = agents.find(a=>a.id===l.agentId)||{};
-    allLoansBody.innerHTML += `<tr><td>${l.id}</td><td>${escapeHtml(l.clientName)}</td><td>${escapeHtml(l.ghanaCard)}</td><td>${escapeHtml(ag.name)}</td><td>${money(l.amount)}</td><td>${money(l.balance)}</td><td>${l.disbursementDate? new Date(l.disbursementDate).toLocaleDateString() : '-'}</td><td><span class="badge ${l.status==='pending'?'status-pending':l.status==='active'?'status-active':l.status==='completed'?'status-completed':l.status==='rejected'?'status-rejected':'status-correction'}">${l.status}</span></td><td><button class="btn-sm" onclick="openLoanDetails('${l.id}')">View</button></td></tr>`;
+    const today = new Date();
+    const nextPayment = l.nextPaymentDate ? new Date(l.nextPaymentDate) : null;
+    const isOverdue = nextPayment && nextPayment < today;
+    
+    const nextPaymentHtml = l.nextPaymentDate ? 
+      `<div class="repayment-date ${isOverdue ? 'overdue' : ''}">
+        ${new Date(l.nextPaymentDate).toLocaleDateString()}
+      </div>` : '-';
+    
+    allLoansBody.innerHTML += `<tr><td>${l.id}</td><td>${escapeHtml(l.clientName)}</td><td>${escapeHtml(l.ghanaCard)}</td><td>${escapeHtml(ag.name)}</td><td>${money(l.amount)}</td><td>${money(l.balance)}</td><td>${nextPaymentHtml}</td><td><span class="badge ${l.status==='pending'?'status-pending':l.status==='active'?'status-active':l.status==='completed'?'status-completed':l.status==='rejected'?'status-rejected':'status-correction'}">${l.status}</span></td><td><button class="btn-sm" onclick="openLoanDetails('${l.id}')">View</button></td></tr>`;
   }); }
 
   // repayments
   const repsBody = document.getElementById('repaymentsBody'); if(repsBody){ repsBody.innerHTML=''; (lsGet(K_REPS)||[]).forEach(r=>{
     const paymentMethodBadge = r.paymentMethod === 'paystack' ? '<span class="badge status-active" style="margin-left:4px">Paystack</span>' : '';
-    repsBody.innerHTML += `<tr><td>${r.id}</td><td>${r.loanId}</td><td>${escapeHtml(r.clientName)}</td><td>${money(r.amount)}${paymentMethodBadge}</td><td>${escapeHtml(r.type)}</td><td>${new Date(r.date).toLocaleString()}</td><td>${escapeHtml(r.agentId)}</td><td>${currentUser && currentUser.role==='admin'?`<button class="btn-sm" onclick="handleEditRep('${r.id}')">Edit</button> <button class="btn-sm btn-danger" onclick="handleDeleteRep('${r.id}')">Delete</button> <button class="btn-sm btn-ghost" onclick="downloadRepReceipt('${r.id}')">Receipt</button>`:`<button class="btn-sm" onclick="handleEditRep('${r.id}')">Edit</button> <button class="btn-sm btn-ghost" onclick="downloadRepReceipt('${r.id}')">Receipt</button>`}</td></tr>`;
+    repsBody.innerHTML += `<tr><td>${r.id}</td><td>${r.loanId}</td><td>${escapeHtml(r.clientName)}</td><td>${money(r.amount)}${paymentMethodBadge}</td><td>${escapeHtml(r.type)}</td><td>${new Date(r.date).toLocaleString()}</td><td>${escapeHtml(r.agentId)}</td><td>${currentUser && currentUser.role==='admin'?`<button class="btn-sm" onclick="handleEditRep('${r.id}')">Edit</button> <button class="btn-sm btn-danger" onclick="handleDeleteRep('${r.id}')">Delete</button> <button class="btn-sm btn-ghost" onclick="showReceipt('repayment','${r.id}')">Receipt</button>`:`<button class="btn-sm" onclick="handleEditRep('${r.id}')">Edit</button> <button class="btn-sm btn-ghost" onclick="showReceipt('repayment','${r.id}')">Receipt</button>`}</td></tr>`;
   }); }
 
   // agent-specific
   if(currentUser && currentUser.role === 'agent'){
     const myLoans = (lsGet(K_LOANS)||[]).filter(l=>l.agentId===currentUser.id);
+    const myReps = (lsGet(K_REPS)||[]).filter(r=>r.agentId===currentUser.id);
+    
     document.getElementById('agentKpiTotalLoans').textContent = myLoans.length;
     document.getElementById('agentKpiPendingLoans').textContent = myLoans.filter(l=>l.status==='pending').length;
     document.getElementById('agentKpiActiveLoans').textContent = myLoans.filter(l=>l.status==='active').length;
-    const myReps = (lsGet(K_REPS)||[]).filter(r=>r.agentId===currentUser.id);
     document.getElementById('agentKpiTotalRepayments').textContent = money(myReps.reduce((s,r)=>s+Number(r.amount||0),0));
-    const agentRecentBody = document.getElementById('agentRecentBody'); agentRecentBody.innerHTML=''; myLoans.slice(0,12).forEach(l => {
-      agentRecentBody.innerHTML += `<tr><td>${escapeHtml(l.clientName)}</td><td>${money(l.amount)}</td><td>${new Date(l.createdAt).toLocaleDateString()}</td><td><span class="badge ${l.status==='pending'?'status-pending':l.status==='active'?'status-active':l.status==='completed'?'status-completed':l.status==='rejected'?'status-rejected':'status-correction'}">${l.status}</span></td><td><button class="btn-sm" onclick="openLoanDetails('${l.id}')">View</button>${(l.status==='active' || l.status==='correction')?` <button class="btn-sm btn" onclick="openRepaymentModal('${l.id}')">Record</button>`:''}</td></tr>`;
+    
+    const agentRecentBody = document.getElementById('agentRecentBody'); 
+    agentRecentBody.innerHTML=''; 
+    myLoans.slice(0,12).forEach(l => {
+      const today = new Date();
+      const nextPayment = l.nextPaymentDate ? new Date(l.nextPaymentDate) : null;
+      const isOverdue = nextPayment && nextPayment < today;
+      const daysOverdue = isOverdue ? Math.floor((today - nextPayment) / (1000 * 60 * 60 * 24)) : 0;
+      
+      const nextPaymentHtml = l.nextPaymentDate ? 
+        `<div class="repayment-date ${isOverdue ? 'overdue' : ''}">
+          ${new Date(l.nextPaymentDate).toLocaleDateString()}
+          ${isOverdue ? ` (${daysOverdue} days overdue)` : ''}
+        </div>` : '-';
+        
+      agentRecentBody.innerHTML += `<tr>
+        <td>${escapeHtml(l.clientName)}</td>
+        <td>${money(l.amount)}</td>
+        <td>${new Date(l.createdAt).toLocaleDateString()}</td>
+        <td>${nextPaymentHtml}</td>
+        <td><span class="badge ${l.status==='pending'?'status-pending':l.status==='active'?'status-active':l.status==='completed'?'status-completed':l.status==='rejected'?'status-rejection':'status-correction'}">${l.status}</span></td>
+        <td>
+          <button class="btn-sm" onclick="openLoanDetails('${l.id}')">View</button>
+          ${(l.status==='active' || l.status==='correction')?` <button class="btn-sm btn" onclick="openRepaymentModal('${l.id}')">Record</button>`:''}
+        </td>
+      </tr>`;
     });
-    const myLoansBody = document.getElementById('myLoansBody'); myLoansBody.innerHTML=''; myLoans.forEach(l=> myLoansBody.innerHTML += `<tr><td>${l.id}</td><td>${escapeHtml(l.clientName)}</td><td>${money(l.amount)}</td><td>${l.status}</td><td><button class="btn-sm" onclick="openLoanDetails('${l.id}')">View</button></td></tr>`);
-    const myRepsBody = document.getElementById('myRepsBody'); myRepsBody.innerHTML=''; myReps.forEach(r=>{
+    
+    const agentOverdueBody = document.getElementById('agentOverdueBody');
+    if (agentOverdueBody) {
+      agentOverdueBody.innerHTML = '';
+      const today = new Date();
+      const overdueLoans = myLoans.filter(l => {
+        if (l.status !== 'active' || !l.nextPaymentDate) return false;
+        return new Date(l.nextPaymentDate) < today;
+      });
+      
+      if (overdueLoans.length === 0) {
+        agentOverdueBody.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:20px" class="muted">No overdue loans</td></tr>`;
+      } else {
+        overdueLoans.forEach(l => {
+          const nextPayment = new Date(l.nextPaymentDate);
+          const daysOverdue = Math.floor((today - nextPayment) / (1000 * 60 * 60 * 24));
+          const penaltyAmount = l.penalties || 0;
+          
+          agentOverdueBody.innerHTML += `<tr>
+            <td>${escapeHtml(l.clientName)}</td>
+            <td>${money(l.amount)}</td>
+            <td>${daysOverdue}</td>
+            <td>${money(penaltyAmount)}</td>
+            <td>${new Date(l.nextPaymentDate).toLocaleDateString()}</td>
+            <td><button class="btn-sm btn-warning" onclick="openRepaymentModal('${l.id}')">Record Payment</button></td>
+          </tr>`;
+        });
+      }
+    }
+    
+    const myLoansBody = document.getElementById('myLoansBody'); 
+    myLoansBody.innerHTML=''; 
+    myLoans.forEach(l=> {
+      const today = new Date();
+      const nextPayment = l.nextPaymentDate ? new Date(l.nextPaymentDate) : null;
+      const isOverdue = nextPayment && nextPayment < today;
+      
+      const nextPaymentHtml = l.nextPaymentDate ? 
+        `<div class="repayment-date ${isOverdue ? 'overdue' : ''}">
+          ${new Date(l.nextPaymentDate).toLocaleDateString()}
+        </div>` : '-';
+        
+      myLoansBody.innerHTML += `<tr>
+        <td>${l.id}</td>
+        <td>${escapeHtml(l.clientName)}</td>
+        <td>${money(l.amount)}</td>
+        <td>${money(l.balance)}</td>
+        <td>${nextPaymentHtml}</td>
+        <td>${l.status}</td>
+        <td><button class="btn-sm" onclick="openLoanDetails('${l.id}')">View</button></td>
+      </tr>`;
+    });
+    
+    const myRepsBody = document.getElementById('myRepsBody'); 
+    myRepsBody.innerHTML=''; 
+    myReps.forEach(r=>{
       const paymentMethodBadge = r.paymentMethod === 'paystack' ? '<span class="badge status-active" style="margin-left:4px">Paystack</span>' : '';
-      myRepsBody.innerHTML += `<tr><td>${r.id}</td><td>${r.loanId}</td><td>${escapeHtml(r.clientName)}</td><td>${money(r.amount)}${paymentMethodBadge}</td><td>${escapeHtml(r.type)}</td><td>${new Date(r.date).toLocaleDateString()}</td><td><button class="btn-sm" onclick="handleEditRep('${r.id}')">Edit</button> <button class="btn-sm btn-ghost" onclick="downloadRepReceipt('${r.id}')">Receipt</button></td></tr>`;
+      myRepsBody.innerHTML += `<tr>
+        <td>${r.id}</td>
+        <td>${r.loanId}</td>
+        <td>${escapeHtml(r.clientName)}</td>
+        <td>${money(r.amount)}${paymentMethodBadge}</td>
+        <td>${escapeHtml(r.type)}</td>
+        <td>${new Date(r.date).toLocaleDateString()}</td>
+        <td>
+          <button class="btn-sm" onclick="handleEditRep('${r.id}')">Edit</button> 
+          <button class="btn-sm btn-ghost" onclick="showReceipt('repayment','${r.id}')">Receipt</button>
+        </td>
+      </tr>`;
     });
   }
 
@@ -1128,7 +1776,12 @@ function openLoanDetails(loanId){
   const agents = lsGet(K_AGENTS) || [];
   const agent = agents.find(a=>a.id===loan.agentId) || {};
   const reps = (lsGet(K_REPS) || []).filter(r=>r.loanId === loanId);
-  let html = `<div style="display:flex;gap:12px"><div style="flex:1"><h4>Client</h4><div><strong>${escapeHtml(loan.clientName)}</strong></div><div class="muted">Ghana Card: ${escapeHtml(loan.ghanaCard)}</div><div class="muted">Phone: ${escapeHtml(loan.phone||'')}</div><div class="muted">Address: ${escapeHtml(loan.address||'')}</div></div><div style="flex:1"><h4>Loan</h4><div>Amount: ${money(loan.amount)}</div><div>Interest: ${money(loan.interest)}</div><div>Balance: ${money(loan.balance)}</div><div>Status: <span class="badge ${loan.status==='pending'?'status-pending':loan.status==='active'?'status-active':loan.status==='completed'?'status-completed':loan.status==='rejected'?'status-rejected':'status-correction'}">${loan.status}</span></div><div>Agent: ${escapeHtml(agent.name||agent.username||agent.email||'')}</div><div>Disbursement: ${loan.disbursementDate? new Date(loan.disbursementDate).toLocaleDateString() : '-'}</div></div>`;
+  const today = new Date();
+  const nextPayment = loan.nextPaymentDate ? new Date(loan.nextPaymentDate) : null;
+  const isOverdue = nextPayment && nextPayment < today;
+  const daysOverdue = isOverdue ? Math.floor((today - nextPayment) / (1000 * 60 * 60 * 24)) : 0;
+  
+  let html = `<div style="display:flex;gap:12px"><div style="flex:1"><h4>Client</h4><div><strong>${escapeHtml(loan.clientName)}</strong></div><div class="muted">Ghana Card: ${escapeHtml(loan.ghanaCard)}</div><div class="muted">Phone: ${escapeHtml(loan.phone||'')}</div><div class="muted">Address: ${escapeHtml(loan.address||'')}</div></div><div style="flex:1"><h4>Loan</h4><div>Amount: ${money(loan.amount)}</div><div>Interest: ${money(loan.interest)}</div><div>Balance: ${money(loan.balance)}</div><div>Status: <span class="badge ${loan.status==='pending'?'status-pending':loan.status==='active'?'status-active':loan.status==='completed'?'status-completed':loan.status==='rejected'?'status-rejected':'status-correction'}">${loan.status}</span></div><div>Agent: ${escapeHtml(agent.name||agent.username||agent.email||'')}</div><div>Disbursement: ${loan.disbursementDate? new Date(loan.disbursementDate).toLocaleDateString() : '-'}</div><div class="${isOverdue ? 'repayment-date overdue' : 'repayment-date'}">Next Payment: ${loan.nextPaymentDate? new Date(loan.nextPaymentDate).toLocaleDateString() : '-'} ${isOverdue ? ` (${daysOverdue} days overdue)` : ''}</div></div>`;
   
   // Add passport image if available
   if(loan.passportUrl) {
@@ -1137,10 +1790,15 @@ function openLoanDetails(loanId){
   
   html += `</div><hr/>`;
 
-  if(currentUser && currentUser.role === 'agent' && loan.agentId === currentUser.id && (loan.status==='pending' || loan.status==='correction')){
-    html += `<div style="margin-bottom:8px"><button class="btn" onclick="openEditLoan('${loanId}')">Edit Loan / Client Info</button></div>`;
-  } else if(currentUser && currentUser.role === 'admin'){
-    html += `<div style="margin-bottom:8px"><button class="btn" onclick="openEditLoan('${loanId}')">Edit Loan / Client Info (Admin)</button> <button class="btn-danger btn-sm" onclick="handleDeleteLoan('${loanId}')">Delete Loan</button></div>`;
+  // Edit button for agents and admins
+  if(currentUser && 
+    (currentUser.role === 'admin' || 
+     (currentUser.role === 'agent' && loan.agentId === currentUser.id && (loan.status==='pending' || loan.status==='correction')))){
+    html += `<div style="margin-bottom:8px"><button class="btn" onclick="openEditLoanModal('${loanId}')">Edit Loan / Update Passport Photo</button></div>`;
+  }
+
+  if(currentUser && currentUser.role === 'admin'){
+    html += `<div style="margin-bottom:8px"><button class="btn-danger btn-sm" onclick="handleDeleteLoan('${loanId}')">Delete Loan</button></div>`;
   }
 
   if(currentUser && currentUser.role === 'admin' && loan.status === 'active'){
@@ -1151,76 +1809,88 @@ function openLoanDetails(loanId){
   if(reps.length === 0) html += `<tr><td colspan="6" class="muted">No repayments</td></tr>`;
   reps.forEach(r => {
     const paymentMethodBadge = r.paymentMethod === 'paystack' ? '<span class="badge status-active" style="margin-left:4px">Paystack</span>' : '';
-    html += `<tr><td>${r.id}</td><td>${money(r.amount)}${paymentMethodBadge}</td><td>${escapeHtml(r.type)}</td><td>${new Date(r.date).toLocaleString()}</td><td>${escapeHtml(r.agentId)}</td><td>${currentUser && currentUser.role==='admin' ? `<button class="btn-sm" onclick="handleEditRep('${r.id}')">Edit</button> <button class="btn-sm btn-danger" onclick="handleDeleteRep('${r.id}')">Delete</button> <button class="btn-sm btn-ghost" onclick="downloadRepReceipt('${r.id}')">Receipt</button>` : (currentUser && currentUser.role==='agent' && r.agentId===currentUser.id ? `<button class="btn-sm" onclick="handleEditRep('${r.id}')">Edit</button> <button class="btn-sm btn-ghost" onclick="downloadRepReceipt('${r.id}')">Receipt</button>` : `<button class="btn-sm btn-ghost" onclick="downloadRepReceipt('${r.id}')">Receipt</button>`)}</td></tr>`;
+    html += `<tr><td>${r.id}</td><td>${money(r.amount)}${paymentMethodBadge}</td><td>${escapeHtml(r.type)}</td><td>${new Date(r.date).toLocaleString()}</td><td>${escapeHtml(r.agentId)}</td><td>${currentUser && currentUser.role==='admin' ? `<button class="btn-sm" onclick="handleEditRep('${r.id}')">Edit</button> <button class="btn-sm btn-danger" onclick="handleDeleteRep('${r.id}')">Delete</button> <button class="btn-sm btn-ghost" onclick="showReceipt('repayment','${r.id}')">Receipt</button>` : (currentUser && currentUser.role==='agent' && r.agentId===currentUser.id ? `<button class="btn-sm" onclick="handleEditRep('${r.id}')">Edit</button> <button class="btn-sm btn-ghost" onclick="showReceipt('repayment','${r.id}')">Receipt</button>` : `<button class="btn-sm btn-ghost" onclick="showReceipt('repayment','${r.id}')">Receipt</button>`)}</td></tr>`;
   });
   html += `</tbody></table>`;
   html += `<div style="margin-top:12px;display:flex;gap:8px">`;
   if((loan.status === 'pending' || loan.status === 'correction') && currentUser && currentUser.role === 'admin') html += `<button class="btn" onclick="openApprove('${loanId}')">Approve & set disbursement date</button>`;
   if(loan.status === 'active' || loan.status === 'correction') html += `<button class="btn btn-success" onclick="openRepaymentModal('${loanId}')">Record Repayment</button>`;
-  html += ` <div style="margin-left:8px"><button class="btn btn-ghost" onclick="downloadLoanReceipt('${loanId}', 'disbursement')">Download Disbursement Receipt</button> <button class="btn btn-ghost" onclick="downloadLoanReceipt('${loanId}','repayments')">Download Repayment (all)</button></div>`;
+  html += ` <div style="margin-left:8px"><button class="btn btn-ghost" onclick="showReceipt('loan_disbursement','${loanId}')">Download Disbursement Receipt</button></div>`;
   html += `</div>`;
   document.getElementById('loanDetailsContent').innerHTML = html;
   showModal('loanDetailsModal');
 }
 
-// Enhanced edit loan function with Supabase storage
-async function openEditLoan(loanId){
+// NEW: Open edit loan modal with pre-filled data
+function openEditLoanModal(loanId) {
   const loan = findLoan(loanId);
-  if(!loan) return;
-  if(currentUser && currentUser.role==='agent' && loan.agentId !== currentUser.id) return showNotification('Not allowed','error');
+  if (!loan) return showNotification('Loan not found', 'error');
   
-  const clientName = prompt('Client name', loan.clientName);
-  if(clientName===null) return;
-  const phone = prompt('Phone', loan.phone || '');
-  if(phone===null) return;
-  const address = prompt('Address', loan.address || '');
-  if(address===null) return;
-  const amountStr = prompt('Amount (₵)', loan.amount);
-  if(amountStr===null) return;
-  const purpose = prompt('Purpose', loan.purpose || '');
-  if(purpose===null) return;
-  const amount = Number(amountStr);
-  if(isNaN(amount) || amount <= 0) return showNotification('Invalid amount','error');
-  
-  // Ask if user wants to update passport photo
-  let newPassportFile = null;
-  if (confirm('Do you want to update the passport photo?')) {
-    const fileInput = document.createElement('input');
-    fileInput.type = 'file';
-    fileInput.accept = 'image/*';
-    fileInput.style.display = 'none';
-    document.body.appendChild(fileInput);
-    
-    const filePromise = new Promise((resolve) => {
-      fileInput.onchange = (e) => {
-        const file = e.target.files[0];
-        document.body.removeChild(fileInput);
-        resolve(file);
-      };
-    });
-    
-    fileInput.click();
-    newPassportFile = await filePromise;
+  // Check permissions
+  if (currentUser && currentUser.role === 'agent' && loan.agentId !== currentUser.id) {
+    return showNotification('You can only edit your own loans', 'error');
   }
   
-  const updates = { clientName, phone, address, amount, purpose };
+  // Pre-fill the form
+  document.getElementById('editLoanId').value = loanId;
+  document.getElementById('editClientName').value = loan.clientName || '';
+  document.getElementById('editClientGhanaCard').value = loan.ghanaCard || '';
+  document.getElementById('editClientPhone').value = loan.phone || '';
+  document.getElementById('editClientAddress').value = loan.address || '';
+  document.getElementById('editClientAmount').value = loan.amount || '';
+  document.getElementById('editClientPurpose').value = loan.purpose || '';
   
-  try {
-    const result = await updateLoanWithPassport(loanId, updates, newPassportFile);
-    if (result && result.success) {
-      showNotification('Loan updated','success'); 
-      refreshAll(); 
-      hideModal('loanDetailsModal');
-    } else {
-      showNotification(result.message || 'Error updating loan','error');
-    }
-  } catch (error) {
-    showNotification('Error updating loan: ' + error.message, 'error');
+  // Show current passport photo if exists
+  const preview = document.getElementById('editPassportPreview');
+  if (loan.passportUrl) {
+    preview.src = loan.passportUrl;
+    preview.style.display = 'block';
+  } else {
+    preview.style.display = 'none';
   }
+  
+  // Clear file input
+  document.getElementById('editClientPassport').value = '';
+  
+  showModal('editLoanModal');
 }
 
 function openApprove(loanId){ document.getElementById('approveLoanId').value = loanId; document.getElementById('disbursementDate').value = ''; showModal('approveModal'); }
 function openRepaymentModal(loanId){ const loan = findLoan(loanId); if(!loan) return showNotification('Loan not found','error'); if(loan.status !== 'active' && loan.status !== 'correction') return showNotification('Loan not active for repayments','error'); document.getElementById('repLoanId').value = loanId; document.getElementById('repAmount').value = ''; document.getElementById('repType').value = 'principal'; document.getElementById('repBalanceHint').textContent = `Remaining balance: ${money(loan.balance)}`; showModal('repaymentModal'); }
+
+// NEW: Show receipt modal
+function showReceipt(type, id) {
+  let receiptData = null;
+  let receiptType = type;
+  
+  if (type === 'loan_disbursement') {
+    const loan = findLoan(id);
+    if (!loan) return showNotification('Loan not found', 'error');
+    const settings = lsGet(K_SETTINGS) || { interestRate: 10 };
+    receiptData = {
+      ...loan,
+      interestRate: settings.interestRate
+    };
+  } else if (type === 'repayment') {
+    const reps = lsGet(K_REPS) || [];
+    const rep = reps.find(r => r.id === id);
+    if (!rep) return showNotification('Repayment not found', 'error');
+    receiptData = rep;
+  }
+  
+  if (!receiptData) return showNotification('Receipt data not found', 'error');
+  
+  const receiptHtml = generateReceipt(receiptType, receiptData);
+  document.getElementById('receiptContent').innerHTML = receiptHtml;
+  
+  // Set up download button
+  const downloadBtn = document.getElementById('downloadReceiptBtn');
+  downloadBtn.onclick = function() {
+    downloadReceipt(receiptType, receiptData);
+  };
+  
+  showModal('receiptModal');
+}
 
 function handleEditRep(repId){
   const reps = lsGet(K_REPS) || [];
@@ -1283,13 +1953,14 @@ function handleResetAgentPwd(agentId){
 window.openLoanDetails = openLoanDetails;
 window.openApprove = openApprove;
 window.openRepaymentModal = openRepaymentModal;
-window.openEditLoan = openEditLoan;
+window.openEditLoanModal = openEditLoanModal;
 window.handleEditRep = handleEditRep;
 window.handleDeleteRep = handleDeleteRep;
 window.handleDeleteLoan = handleDeleteLoan;
 window.handleEditAgent = handleEditAgent;
 window.handleDeleteAgent = handleSoftDeleteAgent;
 window.handleRestoreAgent = handleRestoreAgent;
+window.showReceipt = showReceipt;
 
 /* change password for current user (uses Firebase Auth) */
 function changePasswordHandler(){
@@ -1358,10 +2029,6 @@ function renderCharts(){
   } catch(e) { console.warn('renderCharts error', e); }
 }
 
-/* stubbed receipts */
-function downloadRepReceipt(repId){ alert('Receipt download '); }
-function downloadLoanReceipt(loanId, type){ alert('Receipt download '); }
-
 /* ===============================
   Realtime DB listeners (push remote -> localStorage -> UI)
   =============================== */
@@ -1398,13 +2065,13 @@ async function seedRemoteIfEmpty(){
       await firebase.database().ref('/' + K_LOANS).set([]);
       await firebase.database().ref('/' + K_REPS).set([]);
       await firebase.database().ref('/' + K_NOTIFS).set([]);
-      await firebase.database().ref('/' + K_SETTINGS).set({ interestRate:10, penaltyRate:5, paymentFrequency:3 });
+      await firebase.database().ref('/' + K_SETTINGS).set({ interestRate:10, penaltyRate:50, paymentFrequency:3 });
     } else {
       if(!root[K_AGENTS]) await firebase.database().ref('/' + K_AGENTS).set([]);
       if(!root[K_LOANS]) await firebase.database().ref('/' + K_LOANS).set([]);
       if(!root[K_REPS]) await firebase.database().ref('/' + K_REPS).set([]);
       if(!root[K_NOTIFS]) await firebase.database().ref('/' + K_NOTIFS).set([]);
-      if(!root[K_SETTINGS]) await firebase.database().ref('/' + K_SETTINGS).set({ interestRate:10, penaltyRate:5, paymentFrequency:3 });
+      if(!root[K_SETTINGS]) await firebase.database().ref('/' + K_SETTINGS).set({ interestRate:10, penaltyRate:50, paymentFrequency:3 });
     }
     // pull remote to local
     const snap = await firebase.database().ref('/').get();
@@ -1415,7 +2082,7 @@ async function seedRemoteIfEmpty(){
 
 /* local defaults */
 function seedLocalDefaults(){
-  if(!lsGet(K_SETTINGS)) lsSet(K_SETTINGS, { interestRate:10, penaltyRate:5, paymentFrequency:3 });
+  if(!lsGet(K_SETTINGS)) lsSet(K_SETTINGS, { interestRate:10, penaltyRate:50, paymentFrequency:3 });
   if(!lsGet(K_USERS)){
     // NOTE: we don't create a local admin password here. Admin should already exist in Auth console.
     lsSet(K_USERS, []);
@@ -1485,337 +2152,38 @@ document.addEventListener('DOMContentLoaded', async () => {
 function showAppForUser(){
   loginScreen.style.display='none'; app.style.display='block';
   document.getElementById('userWelcome').textContent = `${currentUser.fullName || currentUser.email} (${currentUser.role})`;
-  if(currentUser.role === 'admin'){ document.getElementById('adminSidebar').style.display='block'; document.getElementById('agentSidebar').style.display='none'; switchTab('dashboard'); }
-  else { document.getElementById('adminSidebar').style.display='none'; document.getElementById('agentSidebar').style.display='block'; switchTab('agentDashboard'); }
+  if(currentUser.role === 'admin'){ 
+    document.getElementById('adminSidebar').style.display='block'; 
+    document.getElementById('agentSidebar').style.display='none'; 
+    switchTab('dashboard'); 
+  } else { 
+    document.getElementById('adminSidebar').style.display='none'; 
+    document.getElementById('agentSidebar').style.display='block'; 
+    switchTab('agentDashboard'); 
+  }
   refreshAll();
 }
 
 /* tab nav helper */
-document.querySelectorAll('.sidebar a').forEach(a => a.addEventListener('click', e => { e.preventDefault(); document.querySelectorAll('.sidebar a').forEach(x=>x.classList.remove('active')); a.classList.add('active'); switchTab(a.dataset.tab); }));
-function switchTab(tabId){ document.querySelectorAll('.tab-section').forEach(s => s.style.display='none'); const sec = document.getElementById(tabId); if(sec) sec.style.display='block'; refreshAll(); }
+document.querySelectorAll('.sidebar a').forEach(a => a.addEventListener('click', e => { 
+  e.preventDefault(); 
+  document.querySelectorAll('.sidebar a').forEach(x=>x.classList.remove('active')); 
+  a.classList.add('active'); 
+  switchTab(a.dataset.tab); 
+}));
+
+function switchTab(tabId){ 
+  document.querySelectorAll('.tab-section').forEach(s => s.style.display='none'); 
+  const sec = document.getElementById(tabId); 
+  if(sec) sec.style.display='block'; 
+  refreshAll(); 
+}
 
 /* modal helpers */
 function showModal(id){ document.getElementById(id).style.display = 'flex'; }
 function hideModal(id){ document.getElementById(id).style.display = 'none'; }
 document.querySelectorAll('.close-modal').forEach(b => b.addEventListener('click', e => { hideModal(e.target.dataset.close); }));
 document.querySelectorAll('.modal').forEach(m => m.addEventListener('click', e => { if(e.target === m) m.style.display='none'; }));
-
-/* ===============================
-  FIXED PASSPORT PHOTO FUNCTIONALITY WITH SUPABASE
-  =============================== */
-
-// Enhanced camera functionality
-function openCameraCapture(onImageCaptured) {
-  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-    alert('Camera access is not supported by your browser');
-    return;
-  }
-
-  const overlay = document.createElement('div');
-  overlay.className = 'camera-overlay';
-  
-  overlay.innerHTML = `
-    <div class="camera-container">
-      <h3 style="margin: 0 0 15px 0; text-align: center;">Take Passport Photo</h3>
-      <video id="cameraVideo" class="camera-video" autoplay playsinline></video>
-      <canvas id="cameraCanvas" style="display: none;"></canvas>
-      <div class="camera-controls">
-        <button id="captureBtn" class="btn">Capture Photo</button>
-        <button id="flipBtn" class="btn btn-ghost">Flip Camera</button>
-        <button id="cancelCamBtn" class="btn btn-ghost">Cancel</button>
-      </div>
-    </div>
-  `;
-
-  document.body.appendChild(overlay);
-
-  const video = document.getElementById('cameraVideo');
-  const canvas = document.getElementById('cameraCanvas');
-  let stream = null;
-  let facingMode = 'user';
-
-  async function startCamera() {
-    try {
-      if (stream) {
-        stream.getTracks().forEach(track => track.stop());
-      }
-
-      stream = await navigator.mediaDevices.getUserMedia({
-        video: { 
-          facingMode: facingMode,
-          width: { ideal: 1280 },
-          height: { ideal: 720 }
-        },
-        audio: false
-      });
-      
-      video.srcObject = stream;
-      await video.play();
-    } catch (err) {
-      console.error('Camera error:', err);
-      alert('Cannot access camera: ' + err.message);
-      overlay.remove();
-    }
-  }
-
-  function capturePhoto() {
-    const context = canvas.getContext('2d');
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    
-    context.drawImage(video, 0, 0, canvas.width, canvas.height);
-    
-    canvas.toBlob(function(blob) {
-      if (blob) {
-        onImageCaptured(blob);
-      } else {
-        alert('Failed to capture photo');
-      }
-    }, 'image/jpeg', 0.8);
-    
-    // Clean up
-    if (stream) {
-      stream.getTracks().forEach(track => track.stop());
-    }
-    overlay.remove();
-  }
-
-  // Event listeners
-  document.getElementById('captureBtn').addEventListener('click', capturePhoto);
-  
-  document.getElementById('flipBtn').addEventListener('click', function() {
-    facingMode = facingMode === 'user' ? 'environment' : 'user';
-    startCamera();
-  });
-  
-  document.getElementById('cancelCamBtn').addEventListener('click', function() {
-    if (stream) {
-      stream.getTracks().forEach(track => track.stop());
-    }
-    overlay.remove();
-  });
-
-  // Start camera
-  startCamera();
-}
-
-// Enhanced passport photo functionality for Add Loan form
-function enhanceAddLoanForm() {
-  const takePhotoBtn = document.getElementById('takePhotoBtn');
-  const passportInput = document.getElementById('clientPassport');
-  const passportPreview = document.getElementById('passportPreview');
-
-  if (takePhotoBtn) {
-    takePhotoBtn.addEventListener('click', function() {
-      openCameraCapture(function(blob) {
-        // Create a file from the blob
-        const file = new File([blob], 'passport_photo.jpg', { 
-          type: 'image/jpeg',
-          lastModified: new Date().getTime()
-        });
-        
-        // Create a new DataTransfer to set the file
-        const dataTransfer = new DataTransfer();
-        dataTransfer.items.add(file);
-        passportInput.files = dataTransfer.files;
-        
-        // Show preview
-        const reader = new FileReader();
-        reader.onload = function(e) {
-          passportPreview.src = e.target.result;
-          passportPreview.style.display = 'block';
-        };
-        reader.readAsDataURL(file);
-        
-        showNotification('Photo captured successfully', 'success');
-      });
-    });
-  }
-}
-
-// Enhanced loan details with passport editing
-function enhanceLoanDetails() {
-  const originalOpenLoanDetails = window.openLoanDetails;
-  
-  window.openLoanDetails = function(loanId) {
-    if (typeof originalOpenLoanDetails === 'function') {
-      originalOpenLoanDetails(loanId);
-    }
-    
-    // Wait for modal to open then enhance it
-    setTimeout(() => {
-      const loan = findLoan(loanId);
-      if (!loan) return;
-
-      const canEdit = currentUser && 
-        (currentUser.role === 'admin' || 
-         (currentUser.role === 'agent' && loan.agentId === currentUser.id));
-      
-      if (!canEdit) return;
-
-      const container = document.getElementById('loanDetailsContent');
-      if (!container) return;
-
-      // Remove existing edit section if present
-      const existingEditSection = document.getElementById('editLoanPassportSection');
-      if (existingEditSection) {
-        existingEditSection.remove();
-      }
-
-      // Create enhanced edit section
-      const editSection = document.createElement('div');
-      editSection.id = 'editLoanPassportSection';
-      editSection.style.marginTop = '20px';
-      editSection.style.padding = '15px';
-      editSection.style.background = 'rgba(255,255,255,0.02)';
-      editSection.style.borderRadius = '8px';
-
-      editSection.innerHTML = `
-        <h4>Edit Client Information</h4>
-        <div style="display: flex; gap: 15px; align-items: flex-start;">
-          <div style="flex: 1;">
-            <label>Full Name</label>
-            <input type="text" id="editClientName" class="form-control" value="${escapeHtml(loan.clientName || '')}" />
-            
-            <label style="margin-top: 10px;">Phone</label>
-            <input type="text" id="editClientPhone" class="form-control" value="${escapeHtml(loan.phone || '')}" />
-            
-            <label style="margin-top: 10px;">Address</label>
-            <input type="text" id="editClientAddress" class="form-control" value="${escapeHtml(loan.address || '')}" />
-          </div>
-          <div style="flex: 1;">
-            <label>Passport Photo</label>
-            <div>
-              <input type="file" id="editPassportInput" accept="image/*" class="form-control" />
-              <button type="button" id="editTakePhotoBtn" class="btn btn-ghost" style="margin-top: 8px; width: 100%;">
-                Take Photo
-              </button>
-            </div>
-            <img id="editPassportPreview" class="passport-preview" 
-                 src="${loan.passportUrl || ''}" 
-                 style="display: ${loan.passportUrl ? 'block' : 'none'}; margin-top: 10px;" />
-          </div>
-        </div>
-        <div style="display: flex; gap: 10px; margin-top: 15px;">
-          <button id="saveClientEditBtn" class="btn">Save Changes</button>
-          <button id="cancelClientEditBtn" class="btn btn-ghost">Cancel</button>
-        </div>
-      `;
-
-      container.appendChild(editSection);
-
-      // Setup event listeners for edit section
-      const editPassportInput = document.getElementById('editPassportInput');
-      const editPassportPreview = document.getElementById('editPassportPreview');
-      const editTakePhotoBtn = document.getElementById('editTakePhotoBtn');
-
-      // File input change handler
-      editPassportInput.addEventListener('change', function(e) {
-        const file = e.target.files[0];
-        if (file) {
-          const reader = new FileReader();
-          reader.onload = function(e) {
-            editPassportPreview.src = e.target.result;
-            editPassportPreview.style.display = 'block';
-          };
-          reader.readAsDataURL(file);
-        }
-      });
-
-      // Take photo button handler
-      editTakePhotoBtn.addEventListener('click', function() {
-        openCameraCapture(function(blob) {
-          const file = new File([blob], 'passport_photo.jpg', { 
-            type: 'image/jpeg',
-            lastModified: new Date().getTime()
-          });
-          
-          const dataTransfer = new DataTransfer();
-          dataTransfer.items.add(file);
-          editPassportInput.files = dataTransfer.files;
-          
-          const reader = new FileReader();
-          reader.onload = function(e) {
-            editPassportPreview.src = e.target.result;
-            editPassportPreview.style.display = 'block';
-          };
-          reader.readAsDataURL(file);
-          
-          showNotification('Photo captured successfully', 'success');
-        });
-      });
-
-      // Save button handler
-      document.getElementById('saveClientEditBtn').addEventListener('click', async function() {
-        const newName = document.getElementById('editClientName').value.trim();
-        const newPhone = document.getElementById('editClientPhone').value.trim();
-        const newAddress = document.getElementById('editClientAddress').value.trim();
-        const passportFile = editPassportInput.files[0];
-
-        if (!newName) {
-          showNotification('Client name is required', 'error');
-          return;
-        }
-
-        try {
-          const updates = {
-            clientName: newName,
-            phone: newPhone,
-            address: newAddress
-          };
-
-          const result = await updateLoanWithPassport(loan.id, updates, passportFile);
-          
-          if (result && result.success) {
-            showNotification('Client information updated successfully', 'success');
-            editSection.remove();
-            // Refresh the loan details view
-            openLoanDetails(loan.id);
-          } else {
-            showNotification('Failed to update client information: ' + (result.message || 'Unknown error'), 'error');
-          }
-        } catch (error) {
-          console.error('Error updating client:', error);
-          showNotification('Error updating client: ' + error.message, 'error');
-        }
-      });
-
-      // Cancel button handler
-      document.getElementById('cancelClientEditBtn').addEventListener('click', function() {
-        editSection.remove();
-      });
-
-    }, 100);
-  };
-}
-
-// Initialize enhanced functionality when DOM is ready
-document.addEventListener('DOMContentLoaded', function() {
-  // Wait a bit for Firebase to initialize then enhance forms
-  setTimeout(() => {
-    enhanceAddLoanForm();
-    enhanceLoanDetails();
-  }, 1000);
-});
-
-// Also enhance when add loan modal is opened
-const addLoanModal = document.getElementById('addLoanModal');
-if (addLoanModal) {
-  const observer = new MutationObserver(function(mutations) {
-    mutations.forEach(function(mutation) {
-      if (mutation.type === 'attributes' && mutation.attributeName === 'style') {
-        if (addLoanModal.style.display === 'flex') {
-          enhanceAddLoanForm();
-        }
-      }
-    });
-  });
-  
-  observer.observe(addLoanModal, {
-    attributes: true,
-    attributeFilter: ['style']
-  });
-}
 
 /* End of script */
 </script>

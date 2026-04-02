@@ -584,7 +584,7 @@
       </form>
       <div id="loginError"></div>
       <p class="small muted" style="margin-top:20px; padding-top:16px; border-top:1px solid var(--border);">
-        Admin: <span style="color:var(--blue-light);font-weight:600">akundaarep@gmail.com</span>
+        Admin: <span style="color:var(--blue-light);font-weight:600"><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="60010b150e04010112051020070d01090c4e030f0d">[email&#160;protected]</a></span>
       </p>
     </div>
   </div>
@@ -1174,7 +1174,7 @@
 </div>
 
 <!-- ORIGINAL SCRIPT SECTION -->
-<script>
+<script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
 /* ===============================
   Firebase Auth + Realtime DB app
   - Email/password login (Firebase Auth)
@@ -1272,7 +1272,15 @@ function now(){ return new Date().toISOString(); }
 function money(n){ return '₵' + (Number(n)||0).toLocaleString(); }
 function ghanaCardValid(s){ return /^GHA-[0-9]{9}-[0-9]$/.test(s); }
 function escapeHtml(s){ if(s==null) return ''; return String(s).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;'); }
-function showNotification(msg, type='success'){ const n=document.getElementById('notification'); const m=document.getElementById('notificationMessage'); n.className = `notification ${type} show`; m.textContent = msg; setTimeout(()=> n.className='notification', 3000); }
+function showNotification(msg, type='success'){ 
+  const n=document.getElementById('notification'); 
+  const m=document.getElementById('notificationMessage'); 
+  const ico=document.getElementById('notifIcon');
+  n.className = `notification ${type} show`; 
+  m.textContent = msg; 
+  if(ico) ico.textContent = type==='success'?'✅':type==='error'?'❌':'ℹ️';
+  setTimeout(()=> n.className='notification', 3500); 
+}
 
 /* ---------- Supabase Storage Functions ---------- */
 
@@ -2291,7 +2299,16 @@ function showAppForUser(){
 
 /* tab nav helper */
 document.querySelectorAll('.sidebar a').forEach(a => a.addEventListener('click', e => { e.preventDefault(); document.querySelectorAll('.sidebar a').forEach(x=>x.classList.remove('active')); a.classList.add('active'); switchTab(a.dataset.tab); }));
-function switchTab(tabId){ document.querySelectorAll('.tab-section').forEach(s => s.style.display='none'); const sec = document.getElementById(tabId); if(sec) sec.style.display='block'; refreshAll(); }
+function switchTab(tabId){ 
+  document.querySelectorAll('.tab-section').forEach(s => { s.style.display='none'; s.classList.remove('active'); }); 
+  const sec = document.getElementById(tabId); 
+  if(sec){ sec.style.display='block'; sec.classList.add('active'); }
+  // update sidebar active link
+  document.querySelectorAll('.sidebar a[data-tab]').forEach(a => {
+    a.classList.toggle('active', a.getAttribute('data-tab') === tabId);
+  });
+  refreshAll(); 
+}
 
 /* modal helpers */
 function showModal(id){ document.getElementById(id).style.display = 'flex'; }
@@ -2608,47 +2625,7 @@ if (addLoanModal) {
 <script>
 /* ===== UI ENHANCEMENTS ===== */
 
-// Tab navigation
-document.querySelectorAll('.sidebar a[data-tab]').forEach(link => {
-  link.addEventListener('click', (e) => {
-    e.preventDefault();
-    const tab = link.getAttribute('data-tab');
-    
-    // Update active link
-    const sidebar = link.closest('.sidebar');
-    sidebar.querySelectorAll('a').forEach(a => a.classList.remove('active'));
-    link.classList.add('active');
-    
-    // Show section
-    document.querySelectorAll('.tab-section').forEach(s => s.classList.remove('active'));
-    const section = document.getElementById(tab);
-    if (section) section.classList.add('active');
-  });
-});
-
-// Modal open/close - support both class-based and old style
-function showModal(id) {
-  const m = document.getElementById(id);
-  if (m) { m.style.display='flex'; m.classList.add('open'); }
-}
-function hideModal(id) {
-  const m = document.getElementById(id);
-  if (m) { m.style.display='none'; m.classList.remove('open'); }
-}
-
-document.querySelectorAll('.close-modal, [data-close]').forEach(el => {
-  el.addEventListener('click', () => {
-    const id = el.getAttribute('data-close') || el.closest('.modal')?.id;
-    if (id) hideModal(id);
-  });
-});
-
-document.querySelectorAll('.modal').forEach(m => {
-  m.addEventListener('click', (e) => { if (e.target === m) hideModal(m.id); });
-});
-
-// Enhanced showNotification
-const _origShow = window.showNotification;
+// Enhanced showNotification (overrides original after DOM ready)
 window.showNotification = function(msg, type='success') {
   const n = document.getElementById('notification');
   const m = document.getElementById('notificationMessage');
@@ -2694,41 +2671,14 @@ if (typeof _origRefreshAll === 'function') {
 }
 
 // Patch sidebar activation for initial load
-function activateTab(tabId) {
-  document.querySelectorAll('.tab-section').forEach(s => s.classList.remove('active'));
-  const section = document.getElementById(tabId);
-  if (section) section.classList.add('active');
-}
 
-// Observe when app becomes visible to activate first tab
+
+// Welcome banner update triggered by refreshAll patch
 const appEl = document.getElementById('app');
-const appObserver = new MutationObserver(() => {
-  if (appEl.style.display !== 'none') {
-    setTimeout(() => {
-      if (window.currentUser) updateWelcomeBanners(window.currentUser);
-      // Activate first visible section
-      const adminSidebar = document.getElementById('adminSidebar');
-      const agentSidebar = document.getElementById('agentSidebar');
-      if (adminSidebar && adminSidebar.style.display !== 'none') activateTab('dashboard');
-      else if (agentSidebar && agentSidebar.style.display !== 'none') activateTab('agentDashboard');
-    }, 200);
-  }
-});
-appObserver.observe(appEl, { attributes: true, attributeFilter: ['style'] });
 
 // Notifications button update
 function updateNotifBadge() {
   if (!window.currentUser) return;
   const lsGet = window.lsGet || ((k) => { try { return JSON.parse(localStorage.getItem(k)); } catch(e) { return null; } });
   const nots = (lsGet('eba_v3_notifs') || []).filter(n => n.userId === window.currentUser.id && !n.read);
-  const badge = document.getElementById('notifBadge');
-  if (badge) {
-    if (nots.length > 0) { badge.textContent = nots.length; badge.style.display = 'flex'; }
-    else { badge.style.display = 'none'; }
-  }
-}
-setInterval(updateNotifBadge, 5000);
-</script>
-
-</body>
-</html>
+  const badge = document.getElementById('no

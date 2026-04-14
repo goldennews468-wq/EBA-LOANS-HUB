@@ -1,316 +1,2191 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>EBA Loans Hub</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>EBA LOANS HUB </title>
 
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <!-- jsPDF + autoTable -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
+  <!-- Paystack -->
+  <script src="https://js.paystack.co/v1/inline.js"></script>
+  <!-- Supabase -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
-<!-- Firebase -->
-<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
-
-<style>
-body{
-margin:0;
-font-family:'Inter';
-background:#020c1b;
-color:#fff;
-}
-
-/* LOGIN */
-.login{
-height:100vh;
-display:flex;
-justify-content:center;
-align-items:center;
-}
-.login-box{
-background:rgba(255,255,255,0.05);
-padding:40px;
-border-radius:14px;
-width:350px;
-backdrop-filter:blur(12px);
-}
-.login-box input{
-width:100%;
-padding:12px;
-margin:10px 0;
-border:none;
-border-radius:8px;
-}
-.login-box button{
-width:100%;
-padding:12px;
-background:#1f8cff;
-border:none;
-border-radius:8px;
-color:white;
-}
-
-/* APP */
-.app{display:none}
-
-/* SIDEBAR */
-.sidebar{
-width:240px;
-height:100vh;
-position:fixed;
-background:#021024;
-padding:20px;
-}
-.sidebar a{
-display:block;
-padding:12px;
-margin-top:10px;
-cursor:pointer;
-border-radius:10px;
-}
-.sidebar a:hover{background:rgba(255,255,255,0.05)}
-
-/* MAIN */
-.main{
-margin-left:240px;
-padding:20px;
-}
-
-/* KPI */
-.kpis{
-display:grid;
-grid-template-columns:repeat(4,1fr);
-gap:20px;
-}
-.kpi{
-padding:20px;
-border-radius:12px;
-}
-.blue{background:#1f8cff}
-.green{background:#15b37b}
-.orange{background:#ff9f43}
-.purple{background:#6f42c1}
-
-/* CARD */
-.card{
-background:rgba(255,255,255,0.05);
-padding:20px;
-margin-top:20px;
-border-radius:12px;
-}
-
-/* TABLE */
-table{width:100%}
-td,th{padding:10px}
-
-/* BUTTON */
-.btn{
-padding:10px;
-background:#1f8cff;
-border:none;
-border-radius:8px;
-color:white;
-cursor:pointer;
-}
-</style>
+  <style>
+    :root{
+      --bg:#041028; --panel:#07233a; --muted:#9fb0c9; --accent:#1f8cff;
+      --accent-2:#0d6efd; --success:#15b37b; --danger:#ff6b6b; --text:#e6f0ff;
+    }
+    *{box-sizing:border-box;font-family:Inter,system-ui,Segoe UI,Roboto,"Helvetica Neue",Arial}
+    body{margin:0;background:linear-gradient(180deg,#031322 0%,var(--bg) 100%);color:var(--text);min-height:100vh; overflow-y: auto;}
+    header{padding:12px 20px;display:flex;justify-content:space-between;align-items:center;background:linear-gradient(90deg,rgba(255,255,255,0.02),rgba(255,255,255,0.01));border-bottom:1px solid rgba(255,255,255,0.03)}
+    .brand{display:flex;gap:12px;align-items:center}
+    .logo{width:44px;height:44px;border-radius:8px;background:linear-gradient(135deg,var(--accent),#145fa8);display:flex;align-items:center;justify-content:center;font-weight:800;color:#fff}
+    h1{font-size:18px;margin:0}
+    .header-actions{display:flex;gap:8px;align-items:center}
+    .btn{padding:8px 12px;border-radius:8px;border:none;background:var(--accent);color:#042033;cursor:pointer;font-weight:700}
+    .btn-sm{padding:6px 8px;border-radius:6px;font-size:13px}
+    .btn-ghost{background:transparent;border:1px solid rgba(255,255,255,0.04);color:var(--muted)}
+    .btn-danger{background:var(--danger);color:white}
+    .btn-success{background:var(--success);color:#042033}
+    .btn-warning{background:#ffc107;color:#000}
+    .container{max-width:1200px;margin:18px auto;padding:0 16px}
+    .layout{display:flex;gap:16px;align-items:flex-start}
+    .sidebar{width:260px;background:linear-gradient(180deg,var(--panel),#061a2b);padding:14px;border-radius:10px;overflow:auto;border:1px solid rgba(255,255,255,0.03)}
+    .sidebar a{display:block;padding:10px;border-radius:8px;color:var(--muted);text-decoration:none;margin-bottom:6px}
+    .sidebar a.active{background:linear-gradient(90deg,rgba(31,140,255,0.12),rgba(255,209,102,0.04));color:var(--text);font-weight:700;border-left:4px solid var(--accent)}
+    .main{flex:1; overflow-y: auto;}
+    .card{background:linear-gradient(180deg,rgba(255,255,255,0.01),rgba(255,255,255,0.00));padding:16px;border-radius:10px;margin-bottom:16px;border:1px solid rgba(255,255,255,0.03)}
+    label{display:block;color:var(--muted);font-size:13px;margin-bottom:6px}
+    .form-control{width:100%;padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.03);background:transparent;color:var(--text)}
+    table{width:100%;border-collapse:collapse}
+    th,td{padding:10px;border-bottom:1px dashed rgba(255,255,255,0.03);font-size:14px;color:var(--muted)}
+    th{font-weight:700}
+    .badge{padding:6px 10px;border-radius:999px;font-weight:700}
+    .status-pending{background:#ffd166;color:#5a3d00}
+    .status-active{background:#b3ffe0;color:#025a36}
+    .status-completed{background:#d6ffd9;color:#034220}
+    .status-rejected{background:#ffd9d9;color:#5a1212}
+    .status-correction{background:#ffe5b4;color:#5a3d00}
+    .status-overdue{background:#ff6b6b;color:#5a1212}
+    .modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);justify-content:center;align-items:center;z-index:9999;padding:16px; overflow-y: auto;}
+    .modal-card{width:100%;max-width:920px;background:linear-gradient(180deg,var(--panel),#071a2b);padding:18px;border-radius:10px;border:1px solid rgba(255,255,255,0.03); max-height: 90vh; overflow-y: auto;}
+    .close-modal{background:transparent;border:none;color:var(--muted);font-size:22px;cursor:pointer}
+    #loginScreen{display:flex;align-items:center;justify-content:center;height:100vh}
+    #loginBox{width:420px;background:linear-gradient(180deg,var(--panel),#071a2b);padding:22px;border-radius:12px;box-shadow:0 8px 30px rgba(0,0,0,0.6)}
+    .muted{color:var(--muted)}
+    .notification{position:fixed;top:22px;right:20px;background:linear-gradient(180deg,#042338,#072a40);padding:12px 14px;border-radius:10px;box-shadow:0 10px 30px rgba(0,0,0,0.7);transform:translateX(120%);transition:transform .25s;z-index:10000;color:var(--text)}
+    .notification.show{transform:translateX(0)}
+    .notification.success{border-left:6px solid var(--success)}
+    .notification.error{border-left:6px solid var(--danger)}
+    .small{font-size:12px}
+    
+    /* New styles for passport upload and Paystack */
+    .passport-preview{width:120px;height:120px;border-radius:8px;object-fit:cover;border:1px dashed rgba(255,255,255,0.1);margin-top:8px}
+    .passport-upload-area{display:flex;align-items:center;gap:12px;margin-top:10px}
+    .paystack-btn{background:#0ba360;color:white;border:none;padding:10px 16px;border-radius:8px;cursor:pointer;font-weight:700;margin-top:8px}
+    .paystack-btn:hover{background:#088f55}
+    .paystack-btn:disabled{background:#6c757d;cursor:not-allowed}
+    
+    /* Camera overlay styles */
+    .camera-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.9);
+      z-index: 20000;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+    .camera-container {
+      background: var(--panel);
+      padding: 20px;
+      border-radius: 10px;
+      max-width: 500px;
+      width: 90%;
+      text-align: center;
+    }
+    .camera-video {
+      width: 100%;
+      border-radius: 8px;
+      background: #000;
+    }
+    .camera-controls {
+      display: flex;
+      gap: 10px;
+      margin-top: 15px;
+      justify-content: center;
+    }
+    
+    /* Repayment date styles */
+    .repayment-date {
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .repayment-date.overdue {
+      color: var(--danger);
+      font-weight: 700;
+    }
+    
+    /* Receipt modal styles */
+    .receipt-container {
+      background: white;
+      color: #000;
+      padding: 20px;
+      border-radius: 8px;
+      max-width: 500px;
+      margin: 0 auto;
+    }
+    .receipt-header {
+      text-align: center;
+      border-bottom: 2px solid #000;
+      padding-bottom: 15px;
+      margin-bottom: 15px;
+    }
+    .receipt-logo {
+      font-size: 24px;
+      font-weight: 800;
+      color: var(--accent);
+      margin-bottom: 5px;
+    }
+    .receipt-details {
+      margin-bottom: 15px;
+    }
+    .receipt-row {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 5px;
+    }
+    .receipt-footer {
+      border-top: 1px dashed #000;
+      padding-top: 15px;
+      text-align: center;
+      font-size: 12px;
+      color: #666;
+    }
+    
+    @media (max-width:980px){ .layout{flex-direction:column}.sidebar{width:100%} }
+  </style>
 </head>
-
 <body>
 
-<!-- LOGIN -->
-<div class="login" id="login">
-<div class="login-box">
-<h2>EBA Loans Hub</h2>
-<input id="email" placeholder="Email">
-<input id="password" type="password" placeholder="Password">
-<button onclick="login()">Login</button>
-</div>
-</div>
+  <!-- LOGIN -->
+  <div id="loginScreen">
+    <div id="loginBox">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+        <div style="display:flex;align-items:center;gap:8px">
+          <div class="logo">EBA</div>
+          <div>
+            <h2 style="color:var(--accent);margin:0">EBA LOANS HUB</h2>
+            <div class="muted small">Sign in with email & password</div>
+          </div>
+        </div>
+      </div>
 
-<!-- APP -->
-<div class="app" id="app">
+      <form id="loginForm" autocomplete="on">
+        <div style="margin-bottom:10px">
+          <label>Email</label>
+          <input id="loginEmail" type="email" class="form-control" required placeholder="you@domain.com" />
+        </div>
+        <div style="margin-bottom:10px">
+          <label>Password</label>
+          <input id="loginPassword" type="password" class="form-control" required placeholder="••••••••" />
+        </div>
+        <div style="display:flex;gap:8px">
+          <button type="submit" class="btn" style="flex:1">Sign in</button>
+        </div>
+      </form>
 
-<div class="sidebar">
-<h3>EBA</h3>
-<a onclick="showTab('dashboard')">Dashboard</a>
-<a onclick="showTab('loans')">Loans</a>
-<a onclick="showTab('repayments')">Repayments</a>
-</div>
+      <div id="loginError" style="display:none;margin-top:10px;color:var(--danger);font-weight:700"></div>
+      <div style="margin-top:12px" class="muted small">Admin email: <strong>ebaloanshub@gmail.com</strong></div>
+    </div>
+  </div>
 
-<div class="main">
+  <!-- APP -->
+  <div id="app" style="display:none">
+    <header>
+      <div class="brand"><div class="logo">EBA</div><h1 style="margin-left:8px">EBA LOANS HUB</h1></div>
+      <div class="header-actions">
+        <div id="userWelcome" style="font-weight:700"></div>
+        <button id="notificationsBtn" class="btn-sm" title="Notifications">🔔 <span id="notifCount" style="color:var(--accent);margin-left:6px"></span></button>
+        <button id="logoutBtn" class="btn-sm btn-ghost">Logout</button>
+      </div>
+    </header>
 
-<h2 id="title">Dashboard</h2>
+    <div class="container">
+      <div class="layout">
+        <aside class="sidebar" id="adminSidebar" style="display:none">
+          <a href="#" class="active" data-tab="dashboard">Dashboard</a>
+          <a href="#" data-tab="pending">Pending Loans</a>
+          <a href="#" data-tab="agents">Agents</a>
+          <a href="#" data-tab="loans">All Loans</a>
+          <a href="#" data-tab="repayments">Repayments</a>
+          <a href="#" data-tab="settings">Settings</a>
+        </aside>
 
-<!-- DASHBOARD -->
-<div id="dashboard">
+        <aside class="sidebar" id="agentSidebar" style="display:none">
+          <a href="#" class="active" data-tab="agentDashboard">Dashboard</a>
+          <a href="#" data-tab="myLoans">My Loans</a>
+          <a href="#" data-tab="myRepayments">My Repayments</a>
+          <a href="#" data-tab="account">Account</a>
+        </aside>
 
-<div class="kpis">
-<div class="kpi blue">Loans <h2 id="k1">0</h2></div>
-<div class="kpi green">Active <h2 id="k2">0</h2></div>
-<div class="kpi orange">Repayments <h2 id="k3">0</h2></div>
-<div class="kpi purple">Users <h2 id="k4">0</h2></div>
-</div>
+        <main class="main">
+          <!-- Admin Dashboard -->
+          <section id="dashboard" class="tab-section">
+            <div class="card">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+                <h2>Admin Dashboard</h2>
+                <div style="display:flex;gap:8px">
+                  <button id="registerAgentBtn" class="btn">Register Agent</button>
+                  <button id="refreshBtn" class="btn btn-ghost">Refresh</button>
+                </div>
+              </div>
 
-<div class="card">
-<canvas id="chart"></canvas>
-</div>
+              <div style="display:flex;gap:12px;margin-bottom:12px">
+                <div style="flex:1" class="card"><h3 id="kpiTotalAgents">0</h3><div class="muted">Total Agents</div></div>
+                <div style="flex:1" class="card"><h3 id="kpiTotalLoans">0</h3><div class="muted">Total Loans</div></div>
+                <div style="flex:1" class="card"><h3 id="kpiActiveLoans">0</h3><div class="muted">Active Loans</div></div>
+                <div style="flex:1" class="card"><h3 id="kpiTotalRepayments">₵0</h3><div class="muted">Total Repaid</div></div>
+              </div>
 
-</div>
+              <div style="display:grid;grid-template-columns:2fr 1fr;gap:12px">
+                <div class="card">
+                  <h4>Loan Status Distribution</h4>
+                  <canvas id="loanStatusChart" style="height:240px"></canvas>
+                </div>
+                <div class="card">
+                  <h4>Repayment Trend (last 6 months)</h4>
+                  <canvas id="repTrendChart" style="height:240px"></canvas>
+                </div>
+              </div>
+            </div>
 
-<!-- LOANS -->
-<div id="loans" style="display:none">
+            <div class="card">
+              <h3>Recent Loan Activities</h3>
+              <div style="overflow:auto;margin-top:8px">
+                <table id="recentTable"><thead><tr><th>Client</th><th>GhanaCard</th><th>Amount</th><th>Agent</th><th>Date</th><th>Next Payment</th><th>Status</th><th>Actions</th></tr></thead><tbody id="recentBody"></tbody></table>
+              </div>
+            </div>
+            
+            <div class="card">
+              <h3>Overdue Loans</h3>
+              <div style="overflow:auto;margin-top:8px">
+                <table id="overdueTable"><thead><tr><th>Client</th><th>GhanaCard</th><th>Amount</th><th>Overdue Days</th><th>Penalty</th><th>Next Payment</th><th>Actions</th></tr></thead><tbody id="overdueBody"></tbody></table>
+              </div>
+            </div>
+          </section>
 
-<div class="card">
-<h3>Add Loan</h3>
-<input id="name" placeholder="Client Name">
-<input id="amount" placeholder="Amount">
-<button class="btn" onclick="addLoan()">Add Loan</button>
-</div>
+          <!-- Agent Dashboard -->
+          <section id="agentDashboard" class="tab-section" style="display:none">
+            <div class="card">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+                <h2>Agent Dashboard</h2>
+                <div style="display:flex;gap:8px">
+                  <button id="addLoanBtn" class="btn">Add Loan Client</button>
+                  <button id="agentRefreshBtn" class="btn btn-ghost">Refresh</button>
+                </div>
+              </div>
 
-<div class="card">
-<h3>Loans</h3>
-<table>
-<thead>
-<tr><th>Name</th><th>Amount</th><th>Status</th></tr>
-</thead>
-<tbody id="loanTable"></tbody>
-</table>
-</div>
+              <div style="display:flex;gap:12px;margin-bottom:12px">
+                <div style="flex:1" class="card"><h3 id="agentKpiTotalLoans">0</h3><div class="muted">My Loans</div></div>
+                <div style="flex:1" class="card"><h3 id="agentKpiPendingLoans">0</h3><div class="muted">Pending</div></div>
+                <div style="flex:1" class="card"><h3 id="agentKpiActiveLoans">0</h3><div class="muted">Active</div></div>
+                <div style="flex:1" class="card"><h3 id="agentKpiTotalRepayments">₵0</h3><div class="muted">Total Repaid</div></div>
+              </div>
 
-</div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+                <div class="card">
+                  <h4>My Loan Status</h4>
+                  <canvas id="agentLoanStatusChart" style="height:220px"></canvas>
+                </div>
+                <div class="card">
+                  <h4>My Repayments (6 months)</h4>
+                  <canvas id="agentRepTrendChart" style="height:220px"></canvas>
+                </div>
+              </div>
+            </div>
 
-<!-- REPAYMENTS -->
-<div id="repayments" style="display:none">
+            <div class="card">
+              <h3>My Recent Loans</h3>
+              <div style="overflow:auto">
+                <table id="agentRecentTable"><thead><tr><th>Client</th><th>Amount</th><th>Date</th><th>Next Payment</th><th>Status</th><th>Actions</th></tr></thead><tbody id="agentRecentBody"></tbody></table>
+              </div>
+            </div>
+            
+            <div class="card">
+              <h3>My Overdue Loans</h3>
+              <div style="overflow:auto">
+                <table id="agentOverdueTable"><thead><tr><th>Client</th><th>Amount</th><th>Overdue Days</th><th>Penalty</th><th>Next Payment</th><th>Actions</th></tr></thead><tbody id="agentOverdueBody"></tbody></table>
+              </div>
+            </div>
+          </section>
 
-<div class="card">
-<h3>Add Repayment</h3>
-<input id="loanId" placeholder="Loan ID">
-<input id="repAmount" placeholder="Amount">
-<button class="btn" onclick="addRep()">Pay</button>
-</div>
+          <!-- Pending -->
+          <section id="pending" class="tab-section" style="display:none">
+            <div class="card">
+              <h3>Pending Loan Applications</h3>
+              <div style="overflow:auto"><table id="pendingTable"><thead><tr><th>ID</th><th>Client</th><th>GhanaCard</th><th>Amount</th><th>Agent</th><th>Date</th><th>Actions</th></tr></thead><tbody id="pendingBody"></tbody></table></div>
+            </div>
+          </section>
 
-<div class="card">
-<h3>Repayments</h3>
-<table>
-<thead>
-<tr><th>Loan</th><th>Amount</th></tr>
-</thead>
-<tbody id="repTable"></tbody>
-</table>
-</div>
+          <!-- Agents -->
+          <section id="agents" class="tab-section" style="display:none">
+            <div class="card">
+              <h3>Registered Agents</h3>
+              <div style="overflow:auto;margin-bottom:12px">
+                <table id="agentsTable"><thead><tr><th>ID</th><th>Name</th><th>Email</th><th>Phone</th><th>Loans Processed</th><th>Actions</th></tr></thead><tbody id="agentsBody"></tbody></table>
+              </div>
 
-</div>
+              <h3 style="margin-top:8px">Deleted Agents</h3>
+              <div style="overflow:auto">
+                <table id="deletedAgentsTable"><thead><tr><th>ID</th><th>Name</th><th>Email</th><th>Phone</th><th>Deleted At</th><th>Actions</th></tr></thead><tbody id="deletedAgentsBody"></tbody></table>
+              </div>
+            </div>
+          </section>
 
-</div>
-</div>
+          <!-- Loans -->
+          <section id="loans" class="tab-section" style="display:none">
+            <div class="card">
+              <h3>All Loans</h3>
+              <div style="overflow:auto"><table id="allLoansTable"><thead><tr><th>ID</th><th>Client</th><th>GhanaCard</th><th>Agent</th><th>Amount</th><th>Balance</th><th>Next Payment</th><th>Status</th><th>Actions</th></tr></thead><tbody id="allLoansBody"></tbody></table></div>
+            </div>
+          </section>
+
+          <!-- Repayments -->
+          <section id="repayments" class="tab-section" style="display:none">
+            <div class="card">
+              <h3>Repayments</h3>
+              <div style="overflow:auto"><table id="repaymentsTable"><thead><tr><th>ID</th><th>LoanID</th><th>Client</th><th>Amount</th><th>Type</th><th>Date</th><th>Agent</th><th>Actions</th></tr></thead><tbody id="repaymentsBody"></tbody></table></div>
+            </div>
+          </section>
+
+          <!-- My Loans -->
+          <section id="myLoans" class="tab-section" style="display:none">
+            <div class="card">
+              <h3>My Loans</h3>
+              <div style="overflow:auto"><table id="myLoansTable"><thead><tr><th>ID</th><th>Client</th><th>Amount</th><th>Balance</th><th>Next Payment</th><th>Status</th><th>Actions</th></tr></thead><tbody id="myLoansBody"></tbody></table></div>
+            </div>
+          </section>
+
+          <!-- My Repayments -->
+          <section id="myRepayments" class="tab-section" style="display:none">
+            <div class="card">
+              <h3>My Repayments</h3>
+              <div style="overflow:auto"><table id="myRepsTable"><thead><tr><th>ID</th><th>LoanID</th><th>Client</th><th>Amount</th><th>Type</th><th>Date</th><th>Actions</th></tr></thead><tbody id="myRepsBody"></tbody></table></div>
+            </div>
+          </section>
+
+          <!-- Account (Change Password) -->
+          <section id="account" class="tab-section" style="display:none">
+            <div class="card">
+              <h3>Account</h3>
+              <div style="max-width:480px">
+                <label>Change Password</label>
+                <input id="currentPwd" type="password" class="form-control" placeholder="Current password" />
+                <input id="newPwd" type="password" class="form-control" placeholder="New password" style="margin-top:8px" />
+                <input id="confirmPwd" type="password" class="form-control" placeholder="Confirm new password" style="margin-top:8px" />
+                <div style="margin-top:10px"><button id="changePwdBtn" class="btn">Change Password</button></div>
+              </div>
+            </div>
+          </section>
+
+          <!-- Settings -->
+          <section id="settings" class="tab-section" style="display:none">
+            <div class="card">
+              <h3>System Settings</h3>
+              <form id="settingsForm">
+                <div style="display:flex;gap:12px">
+                  <div style="flex:1"><label>Interest Rate (%)</label><input id="interestRate" class="form-control" type="number" value="10" required></div>
+                  <div style="flex:1"><label>Penalty Rate (₵)</label><input id="penaltyRate" class="form-control" type="number" value="50" required></div>
+                  <div style="flex:1"><label>Payment Frequency (months)</label><input id="paymentFrequency" class="form-control" type="number" value="3" required></div>
+                </div>
+                <div style="margin-top:12px"><button class="btn" type="submit">Save</button></div>
+              </form>
+            </div>
+
+            <div class="card">
+              <h3>Danger Zone</h3>
+              <p class="muted">Clear all loans & repayments (keeps users & agents)</p>
+              <button id="clearAllDataBtn" class="btn-danger btn btn-sm">Clear Loan & Repayment Data</button>
+            </div>
+          </section>
+        </main>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modals -->
+  <div id="registerAgentModal" class="modal"><div class="modal-card"><div style="display:flex;justify-content:space-between;align-items:center"><h3>Register Agent (admin only)</h3><button class="close-modal" data-close="registerAgentModal">&times;</button></div><form id="registerAgentForm" style="margin-top:12px"><div style="display:flex;gap:8px"><input id="newAgentName" class="form-control" placeholder="Full name" required /><input id="newAgentPhone" class="form-control" placeholder="Phone" required /></div><div style="display:flex;gap:8px;margin-top:8px"><input id="newAgentEmail" class="form-control" placeholder="Agent email (for login)" required /><input id="newAgentPassword" class="form-control" placeholder="Temporary password (min 6 chars)" required /></div><div style="margin-top:10px;display:flex;gap:8px"><button class="btn" type="submit">Create Agent</button><button type="button" class="btn-ghost" onclick="document.getElementById('registerAgentForm').reset()">Reset</button></div></form><div class="muted small" style="margin-top:8px">Note: Agent will be created as a Firebase Auth user and added to the system.</div></div></div>
+
+  <!-- Updated Add Loan Modal with Passport Upload -->
+  <div id="addLoanModal" class="modal"><div class="modal-card"><div style="display:flex;justify-content:space-between;align-items:center"><h3>Add Loan Client</h3><button class="close-modal" data-close="addLoanModal">&times;</button></div><form id="addLoanForm" style="margin-top:12px"><div style="display:flex;gap:8px"><input id="clientName" class="form-control" placeholder="Client Full Name" required /><input id="clientGhanaCard" class="form-control" placeholder="GHA-XXXXXXXXX-X" required /></div><div style="display:flex;gap:8px;margin-top:8px"><input id="clientPhone" class="form-control" placeholder="+233XXXXXXXXX" required /><input id="clientAddress" class="form-control" placeholder="Address" /></div><div style="display:flex;gap:8px;margin-top:8px"><input id="clientAmount" class="form-control" type="number" placeholder="Loan Amount (₵)" required /><input id="clientPurpose" class="form-control" placeholder="Purpose" required /></div>
+  <!-- Passport Upload Section -->
+  <div style="margin-top:12px">
+    <label>Client Passport Photo</label>
+    <div class="passport-upload-area">
+      <input type="file" id="clientPassport" accept="image/*" class="form-control" style="flex:1" />
+      <button type="button" id="takePhotoBtn" class="btn btn-ghost">Take Photo</button>
+      <img id="passportPreview" class="passport-preview" style="display:none" />
+    </div>
+    <div class="muted small">Upload a clear passport-sized photo of the client</div>
+  </div>
+  <div style="margin-top:10px"><button class="btn" type="submit" id="submitLoanBtn">Submit Application</button></div></form></div></div>
+
+  <!-- Edit Loan Modal -->
+  <div id="editLoanModal" class="modal"><div class="modal-card"><div style="display:flex;justify-content:space-between;align-items:center"><h3>Edit Loan Client</h3><button class="close-modal" data-close="editLoanModal">&times;</button></div><form id="editLoanForm" style="margin-top:12px"><input type="hidden" id="editLoanId" /><div style="display:flex;gap:8px"><input id="editClientName" class="form-control" placeholder="Client Full Name" required /><input id="editClientGhanaCard" class="form-control" placeholder="GHA-XXXXXXXXX-X" required /></div><div style="display:flex;gap:8px;margin-top:8px"><input id="editClientPhone" class="form-control" placeholder="+233XXXXXXXXX" required /><input id="editClientAddress" class="form-control" placeholder="Address" /></div><div style="display:flex;gap:8px;margin-top:8px"><input id="editClientAmount" class="form-control" type="number" placeholder="Loan Amount (₵)" required /><input id="editClientPurpose" class="form-control" placeholder="Purpose" required /></div>
+  <!-- Passport Upload Section -->
+  <div style="margin-top:12px">
+    <label>Client Passport Photo</label>
+    <div class="passport-upload-area">
+      <input type="file" id="editClientPassport" accept="image/*" class="form-control" style="flex:1" />
+      <button type="button" id="editTakePhotoBtn" class="btn btn-ghost">Take Photo</button>
+      <img id="editPassportPreview" class="passport-preview" style="display:none" />
+    </div>
+    <div class="muted small">Upload a clear passport-sized photo of the client</div>
+  </div>
+  <div style="margin-top:10px"><button class="btn" type="submit" id="submitEditLoanBtn">Update Loan</button></div></form></div></div>
+
+  <div id="loanDetailsModal" class="modal"><div class="modal-card"><div style="display:flex;justify-content:space-between;align-items:center"><h3>Loan Details</h3><button class="close-modal" data-close="loanDetailsModal">&times;</button></div><div id="loanDetailsContent" style="margin-top:12px"></div></div></div>
+
+  <div id="approveModal" class="modal"><div class="modal-card"><div style="display:flex;justify-content:space-between;align-items:center"><h3>Approve Loan — Disbursement Date</h3><button class="close-modal" data-close="approveModal">&times;</button></div><form id="approveForm" style="margin-top:12px"><input type="hidden" id="approveLoanId" /><div><label>Disbursement Date</label><input id="disbursementDate" type="date" class="form-control" required /></div><div style="margin-top:10px;display:flex;gap:8px"><button class="btn" type="submit">Approve & Disburse</button><button type="button" class="btn-ghost" data-close="approveModal">Cancel</button></div></form></div></div>
+
+  <!-- Updated Repayment Modal with Paystack Option -->
+  <div id="repaymentModal" class="modal"><div class="modal-card"><div style="display:flex;justify-content:space-between;align-items:center"><h3>Record Repayment</h3><button class="close-modal" data-close="repaymentModal">&times;</button></div><form id="repaymentForm" style="margin-top:12px"><input type="hidden" id="repLoanId" /><div style="display:flex;gap:8px"><input id="repAmount" class="form-control" placeholder="Amount" type="number" required /><select id="repType" class="form-control"><option value="principal">Principal</option><option value="interest">Interest</option><option value="penalty">Penalty</option></select></div><div style="margin-top:8px" id="repBalanceHint" class="muted"></div>
+  <!-- Paystack Payment Button -->
+  <div style="margin-top:12px">
+    <button type="button" id="paystackBtn" class="paystack-btn">Pay with Paystack</button>
+    <div class="muted small" style="margin-top:6px">Pay securely with your debit/credit card or mobile money</div>
+  </div>
+  <div style="margin-top:10px;display:flex;gap:8px"><button class="btn" type="submit">Save Repayment</button><button type="button" class="btn-ghost" data-close="repaymentModal">Cancel</button></div></form></div></div>
+
+  <div id="editRepaymentModal" class="modal"><div class="modal-card"><div style="display:flex;justify-content:space-between;align-items:center"><h3>Edit Repayment</h3><button class="close-modal" data-close="editRepaymentModal">&times;</button></div><form id="editRepaymentForm" style="margin-top:12px"><input type="hidden" id="editRepId" /><div style="display:flex;gap:8px"><input id="editRepAmount" class="form-control" placeholder="Amount" type="number" required /><select id="editRepType" class="form-control"><option value="principal">Principal</option><option value="interest">Interest</option><option value="penalty">Penalty</option></select></div><div style="margin-top:8px" id="editRepBalanceHint" class="muted"></div><div style="margin-top:10px;display:flex;gap:8px"><button class="btn" type="submit">Save Changes</button><button type="button" class="btn-ghost" data-close="editRepaymentModal">Cancel</button></div></form></div></div>
+
+  <div id="notificationsModal" class="modal"><div class="modal-card"><div style="display:flex;justify-content:space-between;align-items:center"><h3>Notifications</h3><button class="close-modal" data-close="notificationsModal">&times;</button></div><div id="notificationsList" style="max-height:480px;overflow:auto;margin-top:12px;padding:8px;background:rgba(255,255,255,0.02);border-radius:8px"></div></div></div>
+
+  <div id="receiptModal" class="modal"><div class="modal-card"><div style="display:flex;justify-content:space-between;align-items:center"><h3>Receipt</h3><button class="close-modal" data-close="receiptModal">&times;</button></div><div id="receiptContent" style="margin-top:12px"></div><div style="margin-top:12px;text-align:center"><button id="downloadReceiptBtn" class="btn">Download Receipt</button></div></div></div>
+
+  <div id="notification" class="notification"><div id="notificationMessage">Done</div></div>
 
 <script>
-/* FIREBASE CONFIG */
+/* ===============================
+  Firebase Auth + Realtime DB app
+  - Email/password login (Firebase Auth)
+  - Admin creates agent accounts (Auth + DB)
+  - Realtime DB listeners -> localStorage -> UI refresh
+  =============================== */
+
+/* Load Firebase compat libs */
+(function loadFirebase(){
+  const s1 = document.createElement('script');
+  s1.src = "https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js";
+  s1.onload = () => {
+    const s2 = document.createElement('script');
+    s2.src = "https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js";
+    s2.onload = () => {
+      const s3 = document.createElement('script');
+      s3.src = "https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js";
+      s3.onload = () => { 
+        window._firebaseReady = true; 
+      };
+      document.head.appendChild(s3);
+    };
+    document.head.appendChild(s2);
+  };
+  document.head.appendChild(s1);
+})();
+
+/* ---------- Firebase config (your project) ---------- */
 const firebaseConfig = {
-apiKey: "YOUR_KEY",
-authDomain: "YOUR_DOMAIN",
-databaseURL: "YOUR_DB_URL",
-projectId: "YOUR_PROJECT_ID"
+  apiKey: "AIzaSyB0cCHQFHwZX2hQtErVmpx9XQIXU474dJA",
+  authDomain: "eba-loans-hub-b1512.firebaseapp.com",
+  databaseURL: "https://eba-loans-hub-b1512-default-rtdb.firebaseio.com",
+  projectId: "eba-loans-hub-b1512",
+  storageBucket: "eba-loans-hub-b1512.firebasestorage.app",
+  messagingSenderId: "406151539685",
+  appId: "1:406151539685:web:28c631ba2721f1b28fdd0c"
 };
 
-firebase.initializeApp(firebaseConfig);
-const auth = firebase.auth();
-const db = firebase.database();
+/* ---------- Supabase Storage Configuration ---------- */
+const supabaseUrl = 'https://dbkgugifuaxlwvivoscy.supabase.co';
+const supabaseKey = 'sb_publishable_6WhDgn_QlGv07_FimLB8yA_oylfv4zY';
+let supabaseClient = null;
 
-/* LOGIN */
-function login(){
-const email = document.getElementById("email").value;
-const pass = document.getElementById("password").value;
-
-auth.signInWithEmailAndPassword(email,pass)
-.then(()=>{
-document.getElementById("login").style.display="none";
-document.getElementById("app").style.display="block";
-loadData();
-})
-.catch(e=>alert(e.message));
+// Initialize Supabase
+function initSupabase() {
+  if (window.supabase) {
+    supabaseClient = window.supabase.createClient(supabaseUrl, supabaseKey);
+    console.log('Supabase initialized successfully');
+  } else {
+    console.error('Supabase JS library not loaded');
+  }
 }
 
-/* NAV */
-function showTab(tab){
-document.getElementById("dashboard").style.display="none";
-document.getElementById("loans").style.display="none";
-document.getElementById("repayments").style.display="none";
-document.getElementById(tab).style.display="block";
+/* wait and init firebase */
+async function waitForFirebaseInit(timeout = 8000){
+  const start = Date.now();
+  while(!window._firebaseReady && (Date.now() - start) < timeout){ await new Promise(r => setTimeout(r, 100)); }
+  if(!window._firebaseReady) return false;
+  try{
+    if(!firebase.apps || !firebase.apps.length) firebase.initializeApp(firebaseConfig);
+    window.auth = firebase.auth();
+    window.db = firebase.database();
+    // Initialize Supabase
+    initSupabase();
+    return true;
+  } catch(e){ console.warn('firebase init error', e); return false; }
 }
 
-/* ADD LOAN */
-function addLoan(){
-const name = document.getElementById("name").value;
-const amount = document.getElementById("amount").value;
+/* ---------- keys ---------- */
+const K_USERS = 'eba_v3_users';       // array of user profiles { id: uid, email, role, fullName, createdAt }
+const K_AGENTS = 'eba_v3_agents';
+const K_LOANS = 'eba_v3_loans';
+const K_REPS = 'eba_v3_reps';
+const K_NOTIFS = 'eba_v3_notifs';
+const K_SETTINGS = 'eba_v3_settings';
+const ADMIN_EMAIL = 'akundaarep@gmail.com'; // admin email you provided
 
-const id = Date.now();
+/* ---------- local storage helpers ---------- */
+function lsGetRaw(k){ const v = localStorage.getItem(k); return v ? JSON.parse(v) : null; }
+function lsSetRaw(k,v){ localStorage.setItem(k, JSON.stringify(v)); }
 
-db.ref("loans/"+id).set({
-id,name,amount,status:"active"
-});
+/* Synchronous getters (the rest of code uses these) */
+function lsGet(k){ return lsGetRaw(k); }
+function lsSet(k,v){
+  try{ lsSetRaw(k, v); } catch(e){ console.warn('lsSetRaw failed', e); }
+  // push to remote DB (keep arrays in root path)
+  if(window.db){
+    try{ firebase.database().ref('/' + k).set(v).catch(err => console.warn('remote set failed', err)); } catch(e){ console.warn('lsSet remote error', e); }
+  }
 }
 
-/* ADD REPAYMENT */
-function addRep(){
-const loanId = document.getElementById("loanId").value;
-const amount = document.getElementById("repAmount").value;
+/* ---------- small helpers ---------- */
+function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,8); }
+function now(){ return new Date().toISOString(); }
+function money(n){ return '₵' + (Number(n)||0).toLocaleString(); }
+function ghanaCardValid(s){ return /^GHA-[0-9]{9}-[0-9]$/.test(s); }
+function escapeHtml(s){ if(s==null) return ''; return String(s).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;'); }
+function showNotification(msg, type='success'){ const n=document.getElementById('notification'); const m=document.getElementById('notificationMessage'); n.className = `notification ${type} show`; m.textContent = msg; setTimeout(()=> n.className='notification', 3000); }
 
-db.ref("repayments/"+Date.now()).set({
-loanId,amount
-});
+/* ---------- Supabase Storage Functions ---------- */
+
+// Upload passport image to Supabase Storage
+async function uploadPassportToSupabase(file, loanId) {
+  if (!supabaseClient) {
+    throw new Error('Supabase not initialized');
+  }
+
+  try {
+    // Generate unique file name
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${loanId}_${uid()}.${fileExt}`;
+    const filePath = `passports/${fileName}`;
+
+    // Upload file to Supabase Storage
+    const { data, error } = await supabaseClient.storage
+      .from('passports')
+      .upload(filePath, file, {
+        cacheControl: '3600',
+        upsert: false
+      });
+
+    if (error) {
+      console.error('Supabase upload error:', error);
+      throw new Error(`Upload failed: ${error.message}`);
+    }
+
+    // Get public URL
+    const { data: { publicUrl } } = supabaseClient.storage
+      .from('passports')
+      .getPublicUrl(filePath);
+
+    if (!publicUrl) {
+      throw new Error('Could not get public URL for uploaded file');
+    }
+
+    return publicUrl;
+  } catch (error) {
+    console.error('Error uploading to Supabase:', error);
+    throw new Error(`Failed to upload passport image: ${error.message}`);
+  }
 }
 
-/* LOAD DATA */
-function loadData(){
+// Delete passport image from Supabase Storage
+async function deletePassportFromSupabase(imageUrl) {
+  if (!supabaseClient || !imageUrl) return;
 
-db.ref("loans").on("value",snap=>{
-const data = snap.val()||{};
-let html="";
-let total=0, active=0;
+  try {
+    // Extract file path from URL
+    const urlParts = imageUrl.split('/');
+    const fileName = urlParts[urlParts.length - 1];
+    const filePath = `passports/${fileName}`;
 
-Object.values(data).forEach(l=>{
-html+=`<tr><td>${l.name}</td><td>${l.amount}</td><td>${l.status}</td></tr>`;
-total++;
-if(l.status==="active") active++;
-});
+    const { error } = await supabaseClient.storage
+      .from('passports')
+      .remove([filePath]);
 
-document.getElementById("loanTable").innerHTML=html;
-document.getElementById("k1").innerText=total;
-document.getElementById("k2").innerText=active;
-
-});
-
-db.ref("repayments").on("value",snap=>{
-const data = snap.val()||{};
-let html="";
-let total=0;
-
-Object.values(data).forEach(r=>{
-html+=`<tr><td>${r.loanId}</td><td>${r.amount}</td></tr>`;
-total+=Number(r.amount);
-});
-
-document.getElementById("repTable").innerHTML=html;
-document.getElementById("k3").innerText=total;
-
-});
-
-/* CHART */
-new Chart(document.getElementById("chart"),{
-type:"doughnut",
-data:{
-labels:["Active","Completed"],
-datasets:[{
-data:[70,30],
-backgroundColor:["#1f8cff","#15b37b"]
-}]
+    if (error) {
+      console.warn('Failed to delete old passport image:', error);
+    }
+  } catch (error) {
+    console.warn('Error deleting passport image:', error);
+  }
 }
+
+/* ---------- App state ---------- */
+let currentUser = null; // { uid, id (same), email, role, fullName, createdAt }
+const loginForm = document.getElementById('loginForm');
+const loginScreen = document.getElementById('loginScreen');
+const app = document.getElementById('app');
+const userWelcome = document.getElementById('userWelcome');
+const notifCount = document.getElementById('notifCount');
+
+/* ---------- Auth flows ---------- */
+
+/* Sign-in with Firebase Auth (email/password) */
+loginForm.addEventListener('submit', (e) => {
+  e.preventDefault();
+  const email = document.getElementById('loginEmail').value.trim();
+  const password = document.getElementById('loginPassword').value;
+  if(!email || !password) return showLoginError('Provide email & password');
+  auth.signInWithEmailAndPassword(email, password)
+    .then(userCred => {
+      // onAuthStateChanged will handle UI after sign-in
+      showNotification('Signed in','success');
+    })
+    .catch(err => {
+      showLoginError(err.message || 'Sign-in failed');
+    });
 });
 
+function showLoginError(msg){
+  const el = document.getElementById('loginError'); el.style.display='block'; el.textContent = msg;
+  setTimeout(()=> el.style.display='none', 4000);
 }
+
+/* Logout (via Firebase) */
+document.getElementById('logoutBtn').addEventListener('click', ()=>{
+  auth.signOut().then(()=> {
+    currentUser = null; localStorage.removeItem('eba_current_user_v3');
+    app.style.display='none'; loginScreen.style.display='flex';
+    showNotification('Logged out','success');
+  }).catch(err => showNotification('Logout failed','error'));
+});
+
+/* ---------- User/Agent creation (admin) ---------- */
+
+/*
+  Admin creates agent:
+  - create Firebase Auth user with email & password
+  - push agent profile into eba_v3_users array (id = auth.uid)
+  - push agent record into eba_v3_agents array
+*/
+async function createAgentAuthAndProfile({ name, phone, email, password }){
+  if(!currentUser || currentUser.role !== 'admin') return { success:false, message:'Only admin can create agents' };
+  try {
+    const userCred = await auth.createUserWithEmailAndPassword(email, password);
+    const uid = userCred.user.uid;
+    // add to eba_v3_users array
+    let users = lsGet(K_USERS) || [];
+    const newUser = { id: uid, email, role:'agent', fullName:name || email.split('@')[0], createdAt: now() };
+    users.push(newUser);
+    lsSet(K_USERS, users);
+    // add to agents list as well
+    let agents = lsGet(K_AGENTS) || [];
+    agents.push({ id: uid, name: name || '', email, phone, username: email.split('@')[0], createdAt: now(), loansProcessed:0, deleted:false, deletedAt:null });
+    lsSet(K_AGENTS, agents);
+    showNotification('Agent created','success');
+    return { success:true, id: uid, tempPassword: password };
+  } catch(err){
+    console.warn('createAgent error', err);
+    return { success:false, message: err.message || 'Could not create agent' };
+  }
+}
+
+/* Register agent form (admin only) */
+document.getElementById('registerAgentForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  if(!currentUser || currentUser.role !== 'admin') return showNotification('Only admin can create agents','error');
+  const name = document.getElementById('newAgentName').value.trim();
+  const phone = document.getElementById('newAgentPhone').value.trim();
+  const email = document.getElementById('newAgentEmail').value.trim();
+  const password = document.getElementById('newAgentPassword').value.trim();
+  if(!name || !email || !password || password.length < 6) return showNotification('Fill fields; password >=6 chars','error');
+  const r = await createAgentAuthAndProfile({ name, phone, email, password });
+  if(r.success){
+    document.getElementById('registerAgentForm').reset();
+    hideModal('registerAgentModal');
+    alert(`Agent created. Temp password: ${r.tempPassword}`);
+    refreshAll();
+  } else showNotification(r.message || 'Error','error');
+});
+
+/* ---------- Data functions (loans, reps, agents) ---------- */
+
+function listUsers(){ return lsGet(K_USERS) || []; }
+function listAgents(){ return lsGet(K_AGENTS) || []; }
+
+// Updated createLoan function to handle passport upload with Supabase
+async function createLoan({ clientName, ghanaCard, phone, address, amount, purpose, passportFile }, agentId){
+  if(!ghanaCardValid(ghanaCard)) throw new Error('Invalid Ghana Card format (GHA-XXXXXXXXX-X)');
+  const loans = lsGet(K_LOANS) || [];
+  if(loans.find(l=>l.ghanaCard === ghanaCard)) throw new Error('Client with this Ghana Card already exists');
+  const settings = lsGet(K_SETTINGS) || { interestRate:10, penaltyRate:50, paymentFrequency:3 };
+  const interest = Number(((Number(amount) * settings.interestRate) / 100).toFixed(2));
+  
+  // Generate loan ID first
+  const loanId = uid();
+  
+  // Upload passport image to Supabase Storage if provided
+  let passportUrl = '';
+  if (passportFile) {
+    try {
+      passportUrl = await uploadPassportToSupabase(passportFile, loanId);
+    } catch (error) {
+      console.error('Error uploading passport:', error);
+      throw new Error('Failed to upload passport image: ' + error.message);
+    }
+  }
+  
+  const loan = { 
+    id: loanId, 
+    clientName, 
+    ghanaCard, 
+    phone, 
+    address, 
+    amount:Number(amount), 
+    interest, 
+    purpose, 
+    agentId, 
+    status:'pending', 
+    createdAt: now(), 
+    approvedAt:null, 
+    disbursementDate:null, 
+    balance:0, 
+    nextPaymentDate:null, 
+    audit:[],
+    passportUrl, // Store the passport URL
+    penalties: 0 // Track penalty fees
+  };
+  
+  loans.unshift(loan); 
+  lsSet(K_LOANS, loans);
+  pushNotif(agentId, 'LOAN_SUBMITTED', `Loan for ${clientName} submitted`);
+  return { success:true, loanId: loan.id };
+}
+
+function updateLoan(loanId, updates){
+  let loans = lsGet(K_LOANS) || []; const idx = loans.findIndex(l=>l.id===loanId); if(idx===-1) return { success:false };
+  loans[idx] = { ...loans[idx], ...updates }; lsSet(K_LOANS, loans);
+  if(currentUser) pushNotif(currentUser.id, 'LOAN_UPDATED', `Loan ${loanId} updated`);
+  return { success:true };
+}
+
+// Enhanced update loan function with passport handling
+async function updateLoanWithPassport(loanId, updates, newPassportFile) {
+  const loan = findLoan(loanId);
+  if (!loan) return { success: false, message: 'Loan not found' };
+
+  let passportUrl = loan.passportUrl;
+
+  // If new passport file provided, upload it and delete old one
+  if (newPassportFile) {
+    try {
+      // Delete old passport if exists
+      if (passportUrl) {
+        await deletePassportFromSupabase(passportUrl);
+      }
+      
+      // Upload new passport
+      passportUrl = await uploadPassportToSupabase(newPassportFile, loanId);
+      updates.passportUrl = passportUrl;
+    } catch (error) {
+      console.error('Error updating passport:', error);
+      return { success: false, message: 'Failed to update passport image: ' + error.message };
+    }
+  }
+
+  return updateLoan(loanId, updates);
+}
+
+function approveLoan(loanId, disbursementDate){
+  let loans = lsGet(K_LOANS) || []; const idx = loans.findIndex(l=>l.id===loanId); if(idx===-1) return { success:false, message:'Loan not found' };
+  if(loans[idx].status !== 'pending' && loans[idx].status !== 'correction') return { success:false, message:'Loan not pending' };
+  const settings = lsGet(K_SETTINGS);
+  const total = Number(loans[idx].amount) + Number(loans[idx].interest || 0);
+  const next = new Date(disbursementDate); next.setMonth(next.getMonth() + Number(settings.paymentFrequency || 3));
+  loans[idx].status = 'active';
+  loans[idx].approvedAt = now();
+  loans[idx].disbursementDate = disbursementDate;
+  loans[idx].balance = total;
+  loans[idx].nextPaymentDate = next.toISOString();
+  loans[idx].audit = loans[idx].audit || []; loans[idx].audit.push({ ts: now(), by: currentUser ? currentUser.id : 'system', type:'approved', note:`Disbursed ${disbursementDate}` });
+  lsSet(K_LOANS, loans);
+  let agents = lsGet(K_AGENTS) || []; const ai = agents.findIndex(a=>a.id===loans[idx].agentId); if(ai!==-1){ agents[ai].loansProcessed = (agents[ai].loansProcessed||0)+1; lsSet(K_AGENTS, agents); }
+  pushNotif(loans[idx].agentId, 'LOAN_APPROVED', `Loan ${loanId} approved`);
+  return { success:true };
+}
+
+function rejectLoan(loanId){
+  let loans = lsGet(K_LOANS) || []; const idx = loans.findIndex(l=>l.id===loanId); if(idx===-1) return { success:false };
+  loans[idx].status = 'rejected';
+  loans[idx].audit = loans[idx].audit || []; loans[idx].audit.push({ ts: now(), by: currentUser ? currentUser.id : 'system', type:'rejected' });
+  lsSet(K_LOANS, loans);
+  pushNotif(loans[idx].agentId, 'LOAN_REJECTED', `Loan ${loanId} rejected`);
+  return { success:true };
+}
+
+function takedownLoanForCorrection(loanId){
+  let loans = lsGet(K_LOANS) || []; const idx = loans.findIndex(l=>l.id===loanId); if(idx===-1) return { success:false };
+  loans[idx].status = 'correction';
+  loans[idx].audit = loans[idx].audit || []; loans[idx].audit.push({ ts: now(), by: currentUser ? currentUser.id : 'system', type:'takedown', note:'Takedown for correction' });
+  lsSet(K_LOANS, loans);
+  pushNotif(loans[idx].agentId, 'LOAN_TAKEDOWN', `Loan ${loanId} taken down for correction`);
+  return { success:true };
+}
+
+function deleteLoan(loanId){
+  let loans = lsGet(K_LOANS) || []; const loan = loans.find(l=>l.id===loanId);
+  
+  // Delete passport image from Supabase if exists
+  if (loan && loan.passportUrl) {
+    deletePassportFromSupabase(loan.passportUrl).catch(err => 
+      console.warn('Failed to delete passport image for loan:', loanId, err)
+    );
+  }
+  
+  loans = loans.filter(l=>l.id!==loanId); lsSet(K_LOANS, loans);
+  let reps = lsGet(K_REPS) || []; reps = reps.filter(r=>r.loanId !== loanId); lsSet(K_REPS, reps);
+  if(currentUser) pushNotif(currentUser.id, 'LOAN_DELETED', `Loan ${loanId} removed`);
+  return { success:true };
+}
+
+/* Repayments */
+function listReps(filters={}){ let reps = lsGet(K_REPS) || []; if(filters.agentId) reps = reps.filter(r=>r.agentId===filters.agentId); if(filters.loanId) reps = reps.filter(r=>r.loanId===filters.loanId); return reps; }
+function createRepayment({ loanId, amount, type }, agentId){
+  let loans = lsGet(K_LOANS) || []; const idx = loans.findIndex(l=>l.id===loanId); if(idx===-1) return { success:false, message:'Loan not found' };
+  const loan = loans[idx];
+  if(loan.status !== 'active') return { success:false, message:'Loan not active' };
+  if(Number(amount) > Number(loan.balance)) return { success:false, message:`Amount cannot exceed remaining balance (${money(loan.balance)})` };
+  const rep = { id: uid(), loanId, clientName: loan.clientName, amount: Number(amount), type, date: now(), agentId, paymentMethod: 'manual' };
+  const reps = lsGet(K_REPS) || []; reps.unshift(rep); lsSet(K_REPS, reps);
+  loan.balance = Math.max(0, (Number(loan.balance||0) - Number(amount)));
+  if(loan.balance <= 0) loan.status = 'completed';
+  loan.audit = loan.audit || []; loan.audit.push({ ts: now(), by: agentId, type:'repayment', note:`${type} ₵${amount}` });
+  loans[idx] = loan; lsSet(K_LOANS, loans);
+  pushNotif(loan.agentId, 'REPAYMENT_RECORDED', `Repayment ₵${amount} recorded for ${loan.clientName}`);
+  return { success:true, repaymentId: rep.id };
+}
+
+// New function to create repayment via Paystack
+function createPaystackRepayment({ loanId, amount, type, paystackRef }, agentId){
+  let loans = lsGet(K_LOANS) || []; const idx = loans.findIndex(l=>l.id===loanId); if(idx===-1) return { success:false, message:'Loan not found' };
+  const loan = loans[idx];
+  if(loan.status !== 'active') return { success:false, message:'Loan not active' };
+  if(Number(amount) > Number(loan.balance)) return { success:false, message:`Amount cannot exceed remaining balance (${money(loan.balance)})` };
+  const rep = { id: uid(), loanId, clientName: loan.clientName, amount: Number(amount), type, date: now(), agentId, paymentMethod: 'paystack', paystackRef };
+  const reps = lsGet(K_REPS) || []; reps.unshift(rep); lsSet(K_REPS, reps);
+  loan.balance = Math.max(0, (Number(loan.balance||0) - Number(amount)));
+  if(loan.balance <= 0) loan.status = 'completed';
+  loan.audit = loan.audit || []; loan.audit.push({ ts: now(), by: agentId, type:'repayment', note:`${type} ₵${amount} via Paystack` });
+  loans[idx] = loan; lsSet(K_LOANS, loans);
+  pushNotif(loan.agentId, 'REPAYMENT_RECORDED', `Repayment ₵${amount} via Paystack recorded for ${loan.clientName}`);
+  return { success:true, repaymentId: rep.id };
+}
+
+function updateRepayment(repId, updates){
+  let reps = lsGet(K_REPS) || []; const idx = reps.findIndex(r=>r.id===repId); if(idx===-1) return { success:false, message:'Repayment not found' };
+  const old = reps[idx];
+  const loan = findLoan(old.loanId);
+  if(!loan) return { success:false, message:'Loan missing' };
+  loan.balance = Number(loan.balance || 0) + Number(old.amount || 0);
+  const newAmount = Number(updates.amount);
+  if(newAmount > loan.balance) return { success:false, message:`New amount cannot exceed remaining balance (${money(loan.balance)})` };
+  loan.balance = Math.max(0, loan.balance - newAmount);
+  if(loan.balance <= 0) loan.status = 'completed'; else if(loan.status === 'completed') loan.status = 'active';
+  let loans = lsGet(K_LOANS) || []; const li = loans.findIndex(l=>l.id===loan.id); if(li!==-1){ loans[li] = loan; lsSet(K_LOANS, loans); }
+  reps[idx] = { ...reps[idx], ...updates };
+  lsSet(K_REPS, reps);
+  if(currentUser) pushNotif(currentUser.id, 'REPAYMENT_UPDATED', `Repayment ${repId} updated`);
+  return { success:true };
+}
+
+function deleteRepayment(repId){
+  let reps = lsGet(K_REPS) || []; const idx = reps.findIndex(r=>r.id===repId); if(idx===-1) return { success:false };
+  const rep = reps[idx];
+  const loans = lsGet(K_LOANS) || []; const li = loans.findIndex(l=>l.id===rep.loanId);
+  if(li!==-1){ loans[li].balance = Number(loans[li].balance || 0) + Number(rep.amount || 0); if(loans[li].balance > 0 && loans[li].status === 'completed') loans[li].status = 'active'; lsSet(K_LOANS, loans); }
+  reps = reps.filter(r=>r.id!==repId); lsSet(K_REPS, reps);
+  if(currentUser) pushNotif(currentUser.id, 'REPAYMENT_DELETED', `Repayment ${repId} deleted`);
+  return { success:true };
+}
+
+/* notifications */
+function pushNotif(user, title, body){
+  const nots = lsGet(K_NOTIFS) || [];
+  nots.unshift({ id: uid(), userId: user, title, body, read:false, createdAt: now() });
+  lsSet(K_NOTIFS, nots);
+}
+
+/* ===============================
+  NEW FEATURES IMPLEMENTATION
+  =============================== */
+
+/* 1. Next Repayment Date and Penalty System */
+function checkOverdueLoans() {
+  const loans = lsGet(K_LOANS) || [];
+  const settings = lsGet(K_SETTINGS) || { penaltyRate: 50 };
+  let updated = false;
+  
+  loans.forEach(loan => {
+    if (loan.status === 'active' && loan.nextPaymentDate) {
+      const nextPayment = new Date(loan.nextPaymentDate);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      
+      // If loan is overdue
+      if (nextPayment < today) {
+        const daysOverdue = Math.floor((today - nextPayment) / (1000 * 60 * 60 * 24));
+        
+        // Check if we've already applied penalty for this overdue period
+        // We'll apply penalty once per week of being overdue
+        const penaltyWeeks = Math.floor(daysOverdue / 7);
+        const expectedPenalties = penaltyWeeks;
+        const appliedPenalties = (loan.audit || []).filter(a => a.type === 'penalty').length;
+        
+        if (expectedPenalties > appliedPenalties) {
+          // Apply penalty
+          const penaltyAmount = settings.penaltyRate || 50;
+          loan.balance += penaltyAmount;
+          loan.penalties = (loan.penalties || 0) + penaltyAmount;
+          
+          loan.audit = loan.audit || [];
+          loan.audit.push({
+            ts: now(),
+            by: 'system',
+            type: 'penalty',
+            note: `Auto penalty of ₵${penaltyAmount} for overdue payment (${daysOverdue} days overdue)`
+          });
+          
+          pushNotif(loan.agentId, 'LOAN_PENALTY', `Penalty of ₵${penaltyAmount} applied to ${loan.clientName}'s loan for overdue payment`);
+          updated = true;
+        }
+      }
+    }
+  });
+  
+  if (updated) {
+    lsSet(K_LOANS, loans);
+    refreshAll();
+  }
+}
+
+/* 2. Enhanced Receipt System */
+function generateReceipt(type, data) {
+  let receiptHtml = '';
+  
+  if (type === 'loan_disbursement') {
+    receiptHtml = `
+      <div class="receipt-container">
+        <div class="receipt-header">
+          <div class="receipt-logo">EBA LOANS HUB</div>
+          <div>Official Receipt</div>
+          <div>Loan Disbursement</div>
+        </div>
+        <div class="receipt-details">
+          <div class="receipt-row">
+            <div>Receipt No:</div>
+            <div>${data.id}</div>
+          </div>
+          <div class="receipt-row">
+            <div>Date:</div>
+            <div>${new Date(data.disbursementDate).toLocaleDateString()}</div>
+          </div>
+          <div class="receipt-row">
+            <div>Client:</div>
+            <div>${escapeHtml(data.clientName)}</div>
+          </div>
+          <div class="receipt-row">
+            <div>Ghana Card:</div>
+            <div>${escapeHtml(data.ghanaCard)}</div>
+          </div>
+          <div class="receipt-row">
+            <div>Loan Amount:</div>
+            <div>${money(data.amount)}</div>
+          </div>
+          <div class="receipt-row">
+            <div>Interest (${data.interestRate}%):</div>
+            <div>${money(data.interest)}</div>
+          </div>
+          <div class="receipt-row" style="font-weight:bold;border-top:1px solid #000;padding-top:5px;">
+            <div>Total Amount:</div>
+            <div>${money(data.amount + data.interest)}</div>
+          </div>
+          <div class="receipt-row">
+            <div>Next Payment Date:</div>
+            <div>${new Date(data.nextPaymentDate).toLocaleDateString()}</div>
+          </div>
+        </div>
+        <div class="receipt-footer">
+          <div>Thank you for choosing EBA LOANS HUB</div>
+          <div>Contact: +233 XXX XXX XXX | Email: ebaloanshub@gmail.com</div>
+        </div>
+      </div>
+    `;
+  } else if (type === 'repayment') {
+    receiptHtml = `
+      <div class="receipt-container">
+        <div class="receipt-header">
+          <div class="receipt-logo">EBA LOANS HUB</div>
+          <div>Official Receipt</div>
+          <div>Loan Repayment</div>
+        </div>
+        <div class="receipt-details">
+          <div class="receipt-row">
+            <div>Receipt No:</div>
+            <div>${data.id}</div>
+          </div>
+          <div class="receipt-row">
+            <div>Date:</div>
+            <div>${new Date(data.date).toLocaleDateString()}</div>
+          </div>
+          <div class="receipt-row">
+            <div>Client:</div>
+            <div>${escapeHtml(data.clientName)}</div>
+          </div>
+          <div class="receipt-row">
+            <div>Loan ID:</div>
+            <div>${data.loanId}</div>
+          </div>
+          <div class="receipt-row">
+            <div>Payment Type:</div>
+            <div>${data.type}</div>
+          </div>
+          <div class="receipt-row">
+            <div>Payment Method:</div>
+            <div>${data.paymentMethod || 'Manual'}</div>
+          </div>
+          <div class="receipt-row" style="font-weight:bold;border-top:1px solid #000;padding-top:5px;">
+            <div>Amount Paid:</div>
+            <div>${money(data.amount)}</div>
+          </div>
+          ${data.paystackRef ? `<div class="receipt-row"><div>Transaction Ref:</div><div>${data.paystackRef}</div></div>` : ''}
+        </div>
+        <div class="receipt-footer">
+          <div>Thank you for your payment</div>
+          <div>Contact: +233 XXX XXX XXX | Email: ebaloanshub@gmail.com</div>
+        </div>
+      </div>
+    `;
+  }
+  
+  return receiptHtml;
+}
+
+function downloadReceipt(type, data) {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+  
+  // Add content to PDF based on receipt type
+  doc.setFontSize(20);
+  doc.text('EBA LOANS HUB', 105, 20, { align: 'center' });
+  doc.setFontSize(12);
+  doc.text('Official Receipt', 105, 30, { align: 'center' });
+  
+  if (type === 'loan_disbursement') {
+    doc.text('Loan Disbursement Receipt', 105, 40, { align: 'center' });
+    
+    let y = 60;
+    doc.text(`Receipt No: ${data.id}`, 20, y);
+    doc.text(`Date: ${new Date(data.disbursementDate).toLocaleDateString()}`, 20, y + 10);
+    doc.text(`Client: ${data.clientName}`, 20, y + 20);
+    doc.text(`Ghana Card: ${data.ghanaCard}`, 20, y + 30);
+    doc.text(`Loan Amount: ${money(data.amount)}`, 20, y + 40);
+    doc.text(`Interest: ${money(data.interest)}`, 20, y + 50);
+    doc.text(`Total Amount: ${money(data.amount + data.interest)}`, 20, y + 60);
+    doc.text(`Next Payment: ${new Date(data.nextPaymentDate).toLocaleDateString()}`, 20, y + 70);
+  } else if (type === 'repayment') {
+    doc.text('Loan Repayment Receipt', 105, 40, { align: 'center' });
+    
+    let y = 60;
+    doc.text(`Receipt No: ${data.id}`, 20, y);
+    doc.text(`Date: ${new Date(data.date).toLocaleDateString()}`, 20, y + 10);
+    doc.text(`Client: ${data.clientName}`, 20, y + 20);
+    doc.text(`Loan ID: ${data.loanId}`, 20, y + 30);
+    doc.text(`Payment Type: ${data.type}`, 20, y + 40);
+    doc.text(`Payment Method: ${data.paymentMethod || 'Manual'}`, 20, y + 50);
+    doc.text(`Amount Paid: ${money(data.amount)}`, 20, y + 60);
+    if (data.paystackRef) {
+      doc.text(`Transaction Ref: ${data.paystackRef}`, 20, y + 70);
+    }
+  }
+  
+  // Footer
+  doc.setFontSize(10);
+  doc.text('Thank you for choosing EBA LOANS HUB', 105, 260, { align: 'center' });
+  doc.text('Contact: +233 XXX XXX XXX | Email: ebaloanshub@gmail.com', 105, 270, { align: 'center' });
+  
+  // Save the PDF
+  doc.save(`receipt_${data.id}.pdf`);
+}
+
+/* 3. Camera Functionality */
+function openCameraCapture(onImageCaptured) {
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    alert('Camera access is not supported by your browser');
+    return;
+  }
+
+  const overlay = document.createElement('div');
+  overlay.className = 'camera-overlay';
+  
+  overlay.innerHTML = `
+    <div class="camera-container">
+      <h3 style="margin: 0 0 15px 0; text-align: center;">Take Passport Photo</h3>
+      <video id="cameraVideo" class="camera-video" autoplay playsinline></video>
+      <canvas id="cameraCanvas" style="display: none;"></canvas>
+      <div class="camera-controls">
+        <button id="captureBtn" class="btn">Capture Photo</button>
+        <button id="flipBtn" class="btn btn-ghost">Flip Camera</button>
+        <button id="cancelCamBtn" class="btn btn-ghost">Cancel</button>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(overlay);
+
+  const video = document.getElementById('cameraVideo');
+  const canvas = document.getElementById('cameraCanvas');
+  let stream = null;
+  let facingMode = 'user';
+
+  async function startCamera() {
+    try {
+      if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+      }
+
+      stream = await navigator.mediaDevices.getUserMedia({
+        video: { 
+          facingMode: facingMode,
+          width: { ideal: 1280 },
+          height: { ideal: 720 }
+        },
+        audio: false
+      });
+      
+      video.srcObject = stream;
+      await video.play();
+    } catch (err) {
+      console.error('Camera error:', err);
+      alert('Cannot access camera: ' + err.message);
+      overlay.remove();
+    }
+  }
+
+  function capturePhoto() {
+    const context = canvas.getContext('2d');
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    
+    context.drawImage(video, 0, 0, canvas.width, canvas.height);
+    
+    canvas.toBlob(function(blob) {
+      if (blob) {
+        onImageCaptured(blob);
+      } else {
+        alert('Failed to capture photo');
+      }
+    }, 'image/jpeg', 0.8);
+    
+    // Clean up
+    if (stream) {
+      stream.getTracks().forEach(track => track.stop());
+    }
+    overlay.remove();
+  }
+
+  // Event listeners
+  document.getElementById('captureBtn').addEventListener('click', capturePhoto);
+  
+  document.getElementById('flipBtn').addEventListener('click', function() {
+    facingMode = facingMode === 'user' ? 'environment' : 'user';
+    startCamera();
+  });
+  
+  document.getElementById('cancelCamBtn').addEventListener('click', function() {
+    if (stream) {
+      stream.getTracks().forEach(track => track.stop());
+    }
+    overlay.remove();
+  });
+
+  // Start camera
+  startCamera();
+}
+
+/* ===============================
+  UI wiring & interactions
+  =============================== */
+
+document.getElementById('registerAgentBtn').addEventListener('click', ()=> showModal('registerAgentModal'));
+document.getElementById('refreshBtn').addEventListener('click', ()=> refreshAll());
+document.getElementById('agentRefreshBtn').addEventListener('click', ()=> refreshAll());
+
+document.getElementById('addLoanBtn').addEventListener('click', ()=> showModal('addLoanModal'));
+
+// Passport preview functionality
+document.getElementById('clientPassport').addEventListener('change', function(e) {
+  const file = e.target.files[0];
+  const preview = document.getElementById('passportPreview');
+  
+  if (file) {
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      preview.src = e.target.result;
+      preview.style.display = 'block';
+    };
+    reader.readAsDataURL(file);
+  } else {
+    preview.style.display = 'none';
+  }
+});
+
+// Edit loan passport preview functionality
+document.getElementById('editClientPassport').addEventListener('change', function(e) {
+  const file = e.target.files[0];
+  const preview = document.getElementById('editPassportPreview');
+  
+  if (file) {
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      preview.src = e.target.result;
+      preview.style.display = 'block';
+    };
+    reader.readAsDataURL(file);
+  }
+});
+
+// Camera capture for passport photo in add loan modal
+document.getElementById('takePhotoBtn').addEventListener('click', function() {
+  openCameraCapture(function(blob) {
+    // Create a file from the blob
+    const file = new File([blob], 'passport_photo.jpg', { 
+      type: 'image/jpeg',
+      lastModified: new Date().getTime()
+    });
+    
+    // Create a new DataTransfer to set the file
+    const dataTransfer = new DataTransfer();
+    dataTransfer.items.add(file);
+    document.getElementById('clientPassport').files = dataTransfer.files;
+    
+    // Show preview
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      document.getElementById('passportPreview').src = e.target.result;
+      document.getElementById('passportPreview').style.display = 'block';
+    };
+    reader.readAsDataURL(file);
+    
+    showNotification('Photo captured successfully', 'success');
+  });
+});
+
+// Camera capture for passport photo in edit loan modal
+document.getElementById('editTakePhotoBtn').addEventListener('click', function() {
+  openCameraCapture(function(blob) {
+    // Create a file from the blob
+    const file = new File([blob], 'passport_photo.jpg', { 
+      type: 'image/jpeg',
+      lastModified: new Date().getTime()
+    });
+    
+    // Create a new DataTransfer to set the file
+    const dataTransfer = new DataTransfer();
+    dataTransfer.items.add(file);
+    document.getElementById('editClientPassport').files = dataTransfer.files;
+    
+    // Show preview
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      document.getElementById('editPassportPreview').src = e.target.result;
+      document.getElementById('editPassportPreview').style.display = 'block';
+    };
+    reader.readAsDataURL(file);
+    
+    showNotification('Photo captured successfully', 'success');
+  });
+});
+
+// Add Loan Form
+document.getElementById('addLoanForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  
+  // Show loading state
+  const submitBtn = document.getElementById('submitLoanBtn');
+  const originalText = submitBtn.textContent;
+  submitBtn.textContent = 'Submitting...';
+  submitBtn.disabled = true;
+  
+  const clientName = document.getElementById('clientName').value.trim();
+  const ghanaCard = document.getElementById('clientGhanaCard').value.trim().toUpperCase();
+  const phone = document.getElementById('clientPhone').value.trim();
+  const address = document.getElementById('clientAddress').value.trim();
+  const amount = Number(document.getElementById('clientAmount').value);
+  const purpose = document.getElementById('clientPurpose').value.trim();
+  const passportFile = document.getElementById('clientPassport').files[0];
+  
+  // Validate required fields
+  if (!clientName || !ghanaCard || !phone || !amount || !purpose) {
+    showNotification('Please fill all required fields', 'error');
+    submitBtn.textContent = originalText;
+    submitBtn.disabled = false;
+    return;
+  }
+  
+  try{
+    const r = await createLoan({ clientName, ghanaCard, phone, address, amount, purpose, passportFile }, currentUser.id);
+    if(r.success){ 
+      hideModal('addLoanModal'); 
+      document.getElementById('addLoanForm').reset();
+      document.getElementById('passportPreview').style.display = 'none';
+      showNotification('Application submitted','success'); 
+      refreshAll(); 
+    }
+  }catch(err){ 
+    showNotification(err.message || 'Error','error'); 
+  } finally {
+    // Restore button state
+    submitBtn.textContent = originalText;
+    submitBtn.disabled = false;
+  }
+});
+
+// Edit Loan Form
+document.getElementById('editLoanForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  
+  // Show loading state
+  const submitBtn = document.getElementById('submitEditLoanBtn');
+  const originalText = submitBtn.textContent;
+  submitBtn.textContent = 'Updating...';
+  submitBtn.disabled = true;
+  
+  const loanId = document.getElementById('editLoanId').value;
+  const clientName = document.getElementById('editClientName').value.trim();
+  const ghanaCard = document.getElementById('editClientGhanaCard').value.trim().toUpperCase();
+  const phone = document.getElementById('editClientPhone').value.trim();
+  const address = document.getElementById('editClientAddress').value.trim();
+  const amount = Number(document.getElementById('editClientAmount').value);
+  const purpose = document.getElementById('editClientPurpose').value.trim();
+  const passportFile = document.getElementById('editClientPassport').files[0];
+  
+  // Validate required fields
+  if (!clientName || !ghanaCard || !phone || !amount || !purpose) {
+    showNotification('Please fill all required fields', 'error');
+    submitBtn.textContent = originalText;
+    submitBtn.disabled = false;
+    return;
+  }
+  
+  const updates = { clientName, ghanaCard, phone, address, amount, purpose };
+  
+  try {
+    const result = await updateLoanWithPassport(loanId, updates, passportFile);
+    if (result && result.success) {
+      hideModal('editLoanModal');
+      showNotification('Loan updated successfully', 'success');
+      refreshAll();
+      // Also refresh loan details modal if open
+      if (document.getElementById('loanDetailsModal').style.display === 'flex') {
+        openLoanDetails(loanId);
+      }
+    } else {
+      showNotification(result.message || 'Error updating loan', 'error');
+    }
+  } catch (error) {
+    showNotification('Error updating loan: ' + error.message, 'error');
+  } finally {
+    // Restore button state
+    submitBtn.textContent = originalText;
+    submitBtn.disabled = false;
+  }
+});
+
+document.getElementById('approveForm').addEventListener('submit', (e)=>{
+  e.preventDefault();
+  const loanId = document.getElementById('approveLoanId').value;
+  const disb = document.getElementById('disbursementDate').value;
+  if(!disb) return showNotification('Pick a date','error');
+  const today = new Date(); today.setHours(0,0,0,0);
+  if(new Date(disb) < today) return showNotification('Disbursement date cannot be in the past','error');
+  const r = approveLoan(loanId, disb);
+  if(r.success){ hideModal('approveModal'); showNotification('Loan approved & disbursed','success'); refreshAll(); }
+  else showNotification(r.message || 'Error','error');
+});
+
+document.getElementById('repaymentForm').addEventListener('submit', (e)=>{
+  e.preventDefault();
+  const loanId = document.getElementById('repLoanId').value;
+  const amount = Number(document.getElementById('repAmount').value);
+  const type = document.getElementById('repType').value;
+  if(!amount || amount <= 0) return showNotification('Invalid amount','error');
+  const r = createRepayment({ loanId, amount, type }, currentUser.id);
+  if(r.success){ hideModal('repaymentModal'); showNotification('Repayment recorded','success'); refreshAll(); }
+  else showNotification(r.message || 'Error','error');
+});
+
+document.getElementById('editRepaymentForm').addEventListener('submit',(e)=>{
+  e.preventDefault();
+  const repId = document.getElementById('editRepId').value;
+  const amount = Number(document.getElementById('editRepAmount').value);
+  const type = document.getElementById('editRepType').value;
+  if(!amount || amount <= 0) return showNotification('Invalid amount','error');
+  const r = updateRepayment(repId, { amount, type });
+  if(r.success){ hideModal('editRepaymentModal'); showNotification('Repayment updated','success'); refreshAll(); }
+  else showNotification(r.message || 'Error','error');
+});
+
+document.getElementById('settingsForm').addEventListener('submit',(e)=>{
+  e.preventDefault();
+  const s = { 
+    interestRate: Number(document.getElementById('interestRate').value), 
+    penaltyRate: Number(document.getElementById('penaltyRate').value), 
+    paymentFrequency: Number(document.getElementById('paymentFrequency').value) 
+  };
+  lsSet(K_SETTINGS, s);
+  showNotification('Settings saved','success');
+});
+
+document.getElementById('clearAllDataBtn').addEventListener('click', ()=>{
+  if(!confirm('Clear loans & repayments?')) return;
+  lsSet(K_LOANS, []); lsSet(K_REPS, []); showNotification('Cleared','success'); refreshAll();
+});
+
+document.getElementById('notificationsBtn').addEventListener('click', ()=>{
+  showModal('notificationsModal');
+  const list = document.getElementById('notificationsList'); list.innerHTML = '';
+  if(!currentUser) return;
+  const nots = (lsGet(K_NOTIFS) || []).filter(n => n.userId === currentUser.id);
+  if(!nots.length) { list.innerHTML = '<div class="muted" style="padding:12px">No notifications</div>'; return; }
+  nots.forEach(n => list.innerHTML += `<div style="padding:10px;border-bottom:1px solid rgba(255,255,255,0.03)"><div style="font-weight:700">${escapeHtml(n.title)}</div><div class="muted">${new Date(n.createdAt).toLocaleString()}</div><div style="margin-top:6px">${escapeHtml(n.body)}</div></div>`);
+});
+
+/* ===============================
+  Paystack Integration
+  =============================== */
+
+// Paystack public key (live key)
+const PAYSTACK_PUBLIC_KEY = 'pk_live_6c49dba40c4aa95938a74589cab5ed687c75fd3a';
+
+// Paystack payment handler
+document.getElementById('paystackBtn').addEventListener('click', function(e) {
+  e.preventDefault();
+  
+  const loanId = document.getElementById('repLoanId').value;
+  const amount = Number(document.getElementById('repAmount').value);
+  const type = document.getElementById('repType').value;
+  
+  if (!amount || amount <= 0) {
+    showNotification('Please enter a valid amount', 'error');
+    return;
+  }
+  
+  const loan = findLoan(loanId);
+  if (!loan) {
+    showNotification('Loan not found', 'error');
+    return;
+  }
+  
+  if (amount > Number(loan.balance)) {
+    showNotification(`Amount cannot exceed remaining balance (${money(loan.balance)})`, 'error');
+    return;
+  }
+  
+  // Generate a unique reference
+  const ref = 'EBA_' + uid();
+  
+  // Create Paystack handler
+  const handler = PaystackPop.setup({
+    key: PAYSTACK_PUBLIC_KEY,
+    email: currentUser.email, // Using agent's email for now
+    amount: amount * 100, // Convert to kobo
+    currency: 'GHS',
+    ref: ref,
+    metadata: {
+      loanId: loanId,
+      clientName: loan.clientName,
+      type: type,
+      agentId: currentUser.id
+    },
+    callback: function(response) {
+      // Payment successful
+      showNotification('Payment successful! Recording repayment...', 'success');
+      
+      // Create repayment record
+      const r = createPaystackRepayment({ 
+        loanId, 
+        amount, 
+        type, 
+        paystackRef: response.reference 
+      }, currentUser.id);
+      
+      if (r.success) {
+        hideModal('repaymentModal');
+        showNotification('Repayment recorded successfully via Paystack', 'success');
+        refreshAll();
+      } else {
+        showNotification('Error recording repayment: ' + (r.message || 'Unknown error'), 'error');
+      }
+    },
+    onClose: function() {
+      showNotification('Payment window closed', 'error');
+    }
+  });
+  
+  handler.openIframe();
+});
+
+/* ===============================
+  Rendering lists & charts
+  =============================== */
+
+let loanChart=null, repChart=null, agentLoanChart=null, agentRepChart=null;
+
+function refreshAll(){
+  // Check for overdue loans first
+  checkOverdueLoans();
+  
+  const agents = lsGet(K_AGENTS) || [];
+  const loans = lsGet(K_LOANS) || [];
+  const reps = lsGet(K_REPS) || [];
+  
+  document.getElementById('kpiTotalAgents').textContent = agents.filter(a=>!a.deleted).length;
+  document.getElementById('kpiTotalLoans').textContent = loans.length;
+  document.getElementById('kpiActiveLoans').textContent = loans.filter(l=>l.status==='active').length;
+  document.getElementById('kpiTotalRepayments').textContent = money(reps.reduce((s,r)=>s+Number(r.amount||0),0));
+
+  // recent
+  const recentBody = document.getElementById('recentBody'); 
+  if(recentBody){ 
+    recentBody.innerHTML = ''; 
+    loans.slice(0,40).forEach(l => {
+      const ag = agents.find(a=>a.id===l.agentId) || {};
+      const today = new Date();
+      const nextPayment = l.nextPaymentDate ? new Date(l.nextPaymentDate) : null;
+      const isOverdue = nextPayment && nextPayment < today;
+      const daysOverdue = isOverdue ? Math.floor((today - nextPayment) / (1000 * 60 * 60 * 24)) : 0;
+      
+      const nextPaymentHtml = l.nextPaymentDate ? 
+        `<div class="repayment-date ${isOverdue ? 'overdue' : ''}">
+          ${new Date(l.nextPaymentDate).toLocaleDateString()}
+          ${isOverdue ? ` (${daysOverdue} days overdue)` : ''}
+        </div>` : '-';
+      
+      recentBody.innerHTML += `<tr>
+        <td>${escapeHtml(l.clientName)}</td>
+        <td>${escapeHtml(l.ghanaCard)}</td>
+        <td>${money(l.amount)}</td>
+        <td>${escapeHtml(ag.name||ag.username||ag.email||'')}</td>
+        <td>${new Date(l.createdAt).toLocaleDateString()}</td>
+        <td>${nextPaymentHtml}</td>
+        <td><span class="badge ${l.status==='pending'?'status-pending':l.status==='active'?'status-active':l.status==='completed'?'status-completed':l.status==='rejected'?'status-rejected':'status-correction'}">${l.status}</span></td>
+        <td>
+          <button class="btn-sm" onclick="openLoanDetails('${l.id}')">View</button>
+          ${l.status==='pending' && currentUser && currentUser.role==='admin' ? ` <button class="btn-sm btn" onclick="openApprove('${l.id}')">Approve</button> <button class="btn-sm btn-danger" onclick="handleReject('${l.id}')">Reject</button>` : (l.status==='active'?` <button class="btn-sm btn" onclick="openLoanDetails('${l.id}')">Record Repayment</button>` : (l.status==='correction' && currentUser && currentUser.role==='admin'?` <button class="btn-sm btn" onclick="openApprove('${l.id}')">Approve</button>`:''))}
+        </td>
+      </tr>`;
+    }); 
+  }
+
+  // overdue loans
+  const overdueBody = document.getElementById('overdueBody');
+  if (overdueBody) {
+    overdueBody.innerHTML = '';
+    const today = new Date();
+    const overdueLoans = loans.filter(l => {
+      if (l.status !== 'active' || !l.nextPaymentDate) return false;
+      return new Date(l.nextPaymentDate) < today;
+    });
+    
+    if (overdueLoans.length === 0) {
+      overdueBody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:20px" class="muted">No overdue loans</td></tr>`;
+    } else {
+      overdueLoans.forEach(l => {
+        const nextPayment = new Date(l.nextPaymentDate);
+        const daysOverdue = Math.floor((today - nextPayment) / (1000 * 60 * 60 * 24));
+        const penaltyAmount = l.penalties || 0;
+        
+        overdueBody.innerHTML += `<tr>
+          <td>${escapeHtml(l.clientName)}</td>
+          <td>${escapeHtml(l.ghanaCard)}</td>
+          <td>${money(l.amount)}</td>
+          <td>${daysOverdue}</td>
+          <td>${money(penaltyAmount)}</td>
+          <td>${new Date(l.nextPaymentDate).toLocaleDateString()}</td>
+          <td><button class="btn-sm btn-warning" onclick="openRepaymentModal('${l.id}')">Record Payment</button></td>
+        </tr>`;
+      });
+    }
+  }
+
+  // agents table
+  const agentsBody = document.getElementById('agentsBody'); if(agentsBody){ agentsBody.innerHTML = ''; agents.filter(a=>!a.deleted).forEach(a => agentsBody.innerHTML += `<tr><td>${a.id}</td><td>${escapeHtml(a.name)}</td><td>${escapeHtml(a.email||a.username||'')}</td><td>${escapeHtml(a.phone)}</td><td>${a.loansProcessed||0}</td><td><button class="btn-sm" onclick="handleEditAgent('${a.id}')">Edit</button> <button class="btn-sm btn-ghost" onclick="handleResetAgentPwd('${a.id}')">Reset Pwd</button> <button class="btn-sm btn-danger" onclick="handleSoftDeleteAgent('${a.id}')">Delete</button></td></tr>`); }
+
+  const deletedBody = document.getElementById('deletedAgentsBody'); if(deletedBody){ deletedBody.innerHTML=''; agents.filter(a=>a.deleted).forEach(a => deletedBody.innerHTML += `<tr><td>${a.id}</td><td>${escapeHtml(a.name)}</td><td>${escapeHtml(a.email||a.username||'')}</td><td>${escapeHtml(a.phone)}</td><td>${a.deletedAt? new Date(a.deletedAt).toLocaleString() : ''}</td><td><button class="btn-sm" onclick="handleRestoreAgent('${a.id}')">Restore</button></td></tr>`); }
+
+  // pending
+  const pendingBody = document.getElementById('pendingBody'); if(pendingBody){ pendingBody.innerHTML=''; loans.filter(l=>l.status==='pending').forEach(l=>{
+    const ag = agents.find(a=>a.id===l.agentId)||{};
+    pendingBody.innerHTML += `<tr><td>${l.id}</td><td>${escapeHtml(l.clientName)}</td><td>${escapeHtml(l.ghanaCard)}</td><td>${money(l.amount)}</td><td>${escapeHtml(ag.name)}</td><td>${new Date(l.createdAt).toLocaleDateString()}</td><td><button class="btn-sm btn" onclick="openApprove('${l.id}')">Approve</button> <button class="btn-sm btn-danger" onclick="handleReject('${l.id}')">Reject</button></td></tr>`;
+  }); }
+
+  // all loans
+  const allLoansBody = document.getElementById('allLoansBody'); if(allLoansBody){ allLoansBody.innerHTML=''; loans.forEach(l=>{
+    const ag = agents.find(a=>a.id===l.agentId)||{};
+    const today = new Date();
+    const nextPayment = l.nextPaymentDate ? new Date(l.nextPaymentDate) : null;
+    const isOverdue = nextPayment && nextPayment < today;
+    
+    const nextPaymentHtml = l.nextPaymentDate ? 
+      `<div class="repayment-date ${isOverdue ? 'overdue' : ''}">
+        ${new Date(l.nextPaymentDate).toLocaleDateString()}
+      </div>` : '-';
+    
+    allLoansBody.innerHTML += `<tr><td>${l.id}</td><td>${escapeHtml(l.clientName)}</td><td>${escapeHtml(l.ghanaCard)}</td><td>${escapeHtml(ag.name)}</td><td>${money(l.amount)}</td><td>${money(l.balance)}</td><td>${nextPaymentHtml}</td><td><span class="badge ${l.status==='pending'?'status-pending':l.status==='active'?'status-active':l.status==='completed'?'status-completed':l.status==='rejected'?'status-rejected':'status-correction'}">${l.status}</span></td><td><button class="btn-sm" onclick="openLoanDetails('${l.id}')">View</button></td></tr>`;
+  }); }
+
+  // repayments
+  const repsBody = document.getElementById('repaymentsBody'); if(repsBody){ repsBody.innerHTML=''; (lsGet(K_REPS)||[]).forEach(r=>{
+    const paymentMethodBadge = r.paymentMethod === 'paystack' ? '<span class="badge status-active" style="margin-left:4px">Paystack</span>' : '';
+    repsBody.innerHTML += `<tr><td>${r.id}</td><td>${r.loanId}</td><td>${escapeHtml(r.clientName)}</td><td>${money(r.amount)}${paymentMethodBadge}</td><td>${escapeHtml(r.type)}</td><td>${new Date(r.date).toLocaleString()}</td><td>${escapeHtml(r.agentId)}</td><td>${currentUser && currentUser.role==='admin'?`<button class="btn-sm" onclick="handleEditRep('${r.id}')">Edit</button> <button class="btn-sm btn-danger" onclick="handleDeleteRep('${r.id}')">Delete</button> <button class="btn-sm btn-ghost" onclick="showReceipt('repayment','${r.id}')">Receipt</button>`:`<button class="btn-sm" onclick="handleEditRep('${r.id}')">Edit</button> <button class="btn-sm btn-ghost" onclick="showReceipt('repayment','${r.id}')">Receipt</button>`}</td></tr>`;
+  }); }
+
+  // agent-specific
+  if(currentUser && currentUser.role === 'agent'){
+    const myLoans = (lsGet(K_LOANS)||[]).filter(l=>l.agentId===currentUser.id);
+    const myReps = (lsGet(K_REPS)||[]).filter(r=>r.agentId===currentUser.id);
+    
+    document.getElementById('agentKpiTotalLoans').textContent = myLoans.length;
+    document.getElementById('agentKpiPendingLoans').textContent = myLoans.filter(l=>l.status==='pending').length;
+    document.getElementById('agentKpiActiveLoans').textContent = myLoans.filter(l=>l.status==='active').length;
+    document.getElementById('agentKpiTotalRepayments').textContent = money(myReps.reduce((s,r)=>s+Number(r.amount||0),0));
+    
+    const agentRecentBody = document.getElementById('agentRecentBody'); 
+    agentRecentBody.innerHTML=''; 
+    myLoans.slice(0,12).forEach(l => {
+      const today = new Date();
+      const nextPayment = l.nextPaymentDate ? new Date(l.nextPaymentDate) : null;
+      const isOverdue = nextPayment && nextPayment < today;
+      const daysOverdue = isOverdue ? Math.floor((today - nextPayment) / (1000 * 60 * 60 * 24)) : 0;
+      
+      const nextPaymentHtml = l.nextPaymentDate ? 
+        `<div class="repayment-date ${isOverdue ? 'overdue' : ''}">
+          ${new Date(l.nextPaymentDate).toLocaleDateString()}
+          ${isOverdue ? ` (${daysOverdue} days overdue)` : ''}
+        </div>` : '-';
+        
+      agentRecentBody.innerHTML += `<tr>
+        <td>${escapeHtml(l.clientName)}</td>
+        <td>${money(l.amount)}</td>
+        <td>${new Date(l.createdAt).toLocaleDateString()}</td>
+        <td>${nextPaymentHtml}</td>
+        <td><span class="badge ${l.status==='pending'?'status-pending':l.status==='active'?'status-active':l.status==='completed'?'status-completed':l.status==='rejected'?'status-rejection':'status-correction'}">${l.status}</span></td>
+        <td>
+          <button class="btn-sm" onclick="openLoanDetails('${l.id}')">View</button>
+          ${(l.status==='active' || l.status==='correction')?` <button class="btn-sm btn" onclick="openRepaymentModal('${l.id}')">Record</button>`:''}
+        </td>
+      </tr>`;
+    });
+    
+    const agentOverdueBody = document.getElementById('agentOverdueBody');
+    if (agentOverdueBody) {
+      agentOverdueBody.innerHTML = '';
+      const today = new Date();
+      const overdueLoans = myLoans.filter(l => {
+        if (l.status !== 'active' || !l.nextPaymentDate) return false;
+        return new Date(l.nextPaymentDate) < today;
+      });
+      
+      if (overdueLoans.length === 0) {
+        agentOverdueBody.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:20px" class="muted">No overdue loans</td></tr>`;
+      } else {
+        overdueLoans.forEach(l => {
+          const nextPayment = new Date(l.nextPaymentDate);
+          const daysOverdue = Math.floor((today - nextPayment) / (1000 * 60 * 60 * 24));
+          const penaltyAmount = l.penalties || 0;
+          
+          agentOverdueBody.innerHTML += `<tr>
+            <td>${escapeHtml(l.clientName)}</td>
+            <td>${money(l.amount)}</td>
+            <td>${daysOverdue}</td>
+            <td>${money(penaltyAmount)}</td>
+            <td>${new Date(l.nextPaymentDate).toLocaleDateString()}</td>
+            <td><button class="btn-sm btn-warning" onclick="openRepaymentModal('${l.id}')">Record Payment</button></td>
+          </tr>`;
+        });
+      }
+    }
+    
+    const myLoansBody = document.getElementById('myLoansBody'); 
+    myLoansBody.innerHTML=''; 
+    myLoans.forEach(l=> {
+      const today = new Date();
+      const nextPayment = l.nextPaymentDate ? new Date(l.nextPaymentDate) : null;
+      const isOverdue = nextPayment && nextPayment < today;
+      
+      const nextPaymentHtml = l.nextPaymentDate ? 
+        `<div class="repayment-date ${isOverdue ? 'overdue' : ''}">
+          ${new Date(l.nextPaymentDate).toLocaleDateString()}
+        </div>` : '-';
+        
+      myLoansBody.innerHTML += `<tr>
+        <td>${l.id}</td>
+        <td>${escapeHtml(l.clientName)}</td>
+        <td>${money(l.amount)}</td>
+        <td>${money(l.balance)}</td>
+        <td>${nextPaymentHtml}</td>
+        <td>${l.status}</td>
+        <td><button class="btn-sm" onclick="openLoanDetails('${l.id}')">View</button></td>
+      </tr>`;
+    });
+    
+    const myRepsBody = document.getElementById('myRepsBody'); 
+    myRepsBody.innerHTML=''; 
+    myReps.forEach(r=>{
+      const paymentMethodBadge = r.paymentMethod === 'paystack' ? '<span class="badge status-active" style="margin-left:4px">Paystack</span>' : '';
+      myRepsBody.innerHTML += `<tr>
+        <td>${r.id}</td>
+        <td>${r.loanId}</td>
+        <td>${escapeHtml(r.clientName)}</td>
+        <td>${money(r.amount)}${paymentMethodBadge}</td>
+        <td>${escapeHtml(r.type)}</td>
+        <td>${new Date(r.date).toLocaleDateString()}</td>
+        <td>
+          <button class="btn-sm" onclick="handleEditRep('${r.id}')">Edit</button> 
+          <button class="btn-sm btn-ghost" onclick="showReceipt('repayment','${r.id}')">Receipt</button>
+        </td>
+      </tr>`;
+    });
+  }
+
+  document.getElementById('changePwdBtn').addEventListener('click', changePasswordHandler);
+
+  if(currentUser){
+    const nots = (lsGet(K_NOTIFS) || []).filter(n => n.userId === currentUser.id);
+    const unread = nots.filter(n => !n.read).length;
+    notifCount.textContent = unread ? unread : '';
+  }
+
+  renderCharts();
+}
+
+/* loan details view and actions (updated to show passport) */
+function openLoanDetails(loanId){
+  const loan = findLoan(loanId);
+  if(!loan) return showNotification('Loan not found','error');
+  const agents = lsGet(K_AGENTS) || [];
+  const agent = agents.find(a=>a.id===loan.agentId) || {};
+  const reps = (lsGet(K_REPS) || []).filter(r=>r.loanId === loanId);
+  const today = new Date();
+  const nextPayment = loan.nextPaymentDate ? new Date(loan.nextPaymentDate) : null;
+  const isOverdue = nextPayment && nextPayment < today;
+  const daysOverdue = isOverdue ? Math.floor((today - nextPayment) / (1000 * 60 * 60 * 24)) : 0;
+  
+  let html = `<div style="display:flex;gap:12px"><div style="flex:1"><h4>Client</h4><div><strong>${escapeHtml(loan.clientName)}</strong></div><div class="muted">Ghana Card: ${escapeHtml(loan.ghanaCard)}</div><div class="muted">Phone: ${escapeHtml(loan.phone||'')}</div><div class="muted">Address: ${escapeHtml(loan.address||'')}</div></div><div style="flex:1"><h4>Loan</h4><div>Amount: ${money(loan.amount)}</div><div>Interest: ${money(loan.interest)}</div><div>Balance: ${money(loan.balance)}</div><div>Status: <span class="badge ${loan.status==='pending'?'status-pending':loan.status==='active'?'status-active':loan.status==='completed'?'status-completed':loan.status==='rejected'?'status-rejected':'status-correction'}">${loan.status}</span></div><div>Agent: ${escapeHtml(agent.name||agent.username||agent.email||'')}</div><div>Disbursement: ${loan.disbursementDate? new Date(loan.disbursementDate).toLocaleDateString() : '-'}</div><div class="${isOverdue ? 'repayment-date overdue' : 'repayment-date'}">Next Payment: ${loan.nextPaymentDate? new Date(loan.nextPaymentDate).toLocaleDateString() : '-'} ${isOverdue ? ` (${daysOverdue} days overdue)` : ''}</div></div>`;
+  
+  // Add passport image if available
+  if(loan.passportUrl) {
+    html += `<div style="flex:0.5"><h4>Passport Photo</h4><img src="${loan.passportUrl}" class="passport-preview" style="width:100%;height:auto;max-width:150px" /></div>`;
+  }
+  
+  html += `</div><hr/>`;
+
+  // Edit button for agents and admins
+  if(currentUser && 
+    (currentUser.role === 'admin' || 
+     (currentUser.role === 'agent' && loan.agentId === currentUser.id && (loan.status==='pending' || loan.status==='correction')))){
+    html += `<div style="margin-bottom:8px"><button class="btn" onclick="openEditLoanModal('${loanId}')">Edit Loan / Update Passport Photo</button></div>`;
+  }
+
+  if(currentUser && currentUser.role === 'admin'){
+    html += `<div style="margin-bottom:8px"><button class="btn-danger btn-sm" onclick="handleDeleteLoan('${loanId}')">Delete Loan</button></div>`;
+  }
+
+  if(currentUser && currentUser.role === 'admin' && loan.status === 'active'){
+    html += `<div style="margin-bottom:8px"><button class="btn-ghost" onclick="handleTakedown('${loanId}')">Takedown for Correction</button></div>`;
+  }
+
+  html += `<h4>Repayment History</h4><table><thead><tr><th>ID</th><th>Amount</th><th>Type</th><th>Date</th><th>Agent</th><th>Actions</th></tr></thead><tbody>`;
+  if(reps.length === 0) html += `<tr><td colspan="6" class="muted">No repayments</td></tr>`;
+  reps.forEach(r => {
+    const paymentMethodBadge = r.paymentMethod === 'paystack' ? '<span class="badge status-active" style="margin-left:4px">Paystack</span>' : '';
+    html += `<tr><td>${r.id}</td><td>${money(r.amount)}${paymentMethodBadge}</td><td>${escapeHtml(r.type)}</td><td>${new Date(r.date).toLocaleString()}</td><td>${escapeHtml(r.agentId)}</td><td>${currentUser && currentUser.role==='admin' ? `<button class="btn-sm" onclick="handleEditRep('${r.id}')">Edit</button> <button class="btn-sm btn-danger" onclick="handleDeleteRep('${r.id}')">Delete</button> <button class="btn-sm btn-ghost" onclick="showReceipt('repayment','${r.id}')">Receipt</button>` : (currentUser && currentUser.role==='agent' && r.agentId===currentUser.id ? `<button class="btn-sm" onclick="handleEditRep('${r.id}')">Edit</button> <button class="btn-sm btn-ghost" onclick="showReceipt('repayment','${r.id}')">Receipt</button>` : `<button class="btn-sm btn-ghost" onclick="showReceipt('repayment','${r.id}')">Receipt</button>`)}</td></tr>`;
+  });
+  html += `</tbody></table>`;
+  html += `<div style="margin-top:12px;display:flex;gap:8px">`;
+  if((loan.status === 'pending' || loan.status === 'correction') && currentUser && currentUser.role === 'admin') html += `<button class="btn" onclick="openApprove('${loanId}')">Approve & set disbursement date</button>`;
+  if(loan.status === 'active' || loan.status === 'correction') html += `<button class="btn btn-success" onclick="openRepaymentModal('${loanId}')">Record Repayment</button>`;
+  html += ` <div style="margin-left:8px"><button class="btn btn-ghost" onclick="showReceipt('loan_disbursement','${loanId}')">Download Disbursement Receipt</button></div>`;
+  html += `</div>`;
+  document.getElementById('loanDetailsContent').innerHTML = html;
+  showModal('loanDetailsModal');
+}
+
+// NEW: Open edit loan modal with pre-filled data
+function openEditLoanModal(loanId) {
+  const loan = findLoan(loanId);
+  if (!loan) return showNotification('Loan not found', 'error');
+  
+  // Check permissions
+  if (currentUser && currentUser.role === 'agent' && loan.agentId !== currentUser.id) {
+    return showNotification('You can only edit your own loans', 'error');
+  }
+  
+  // Pre-fill the form
+  document.getElementById('editLoanId').value = loanId;
+  document.getElementById('editClientName').value = loan.clientName || '';
+  document.getElementById('editClientGhanaCard').value = loan.ghanaCard || '';
+  document.getElementById('editClientPhone').value = loan.phone || '';
+  document.getElementById('editClientAddress').value = loan.address || '';
+  document.getElementById('editClientAmount').value = loan.amount || '';
+  document.getElementById('editClientPurpose').value = loan.purpose || '';
+  
+  // Show current passport photo if exists
+  const preview = document.getElementById('editPassportPreview');
+  if (loan.passportUrl) {
+    preview.src = loan.passportUrl;
+    preview.style.display = 'block';
+  } else {
+    preview.style.display = 'none';
+  }
+  
+  // Clear file input
+  document.getElementById('editClientPassport').value = '';
+  
+  showModal('editLoanModal');
+}
+
+function openApprove(loanId){ document.getElementById('approveLoanId').value = loanId; document.getElementById('disbursementDate').value = ''; showModal('approveModal'); }
+function openRepaymentModal(loanId){ const loan = findLoan(loanId); if(!loan) return showNotification('Loan not found','error'); if(loan.status !== 'active' && loan.status !== 'correction') return showNotification('Loan not active for repayments','error'); document.getElementById('repLoanId').value = loanId; document.getElementById('repAmount').value = ''; document.getElementById('repType').value = 'principal'; document.getElementById('repBalanceHint').textContent = `Remaining balance: ${money(loan.balance)}`; showModal('repaymentModal'); }
+
+// NEW: Show receipt modal
+function showReceipt(type, id) {
+  let receiptData = null;
+  let receiptType = type;
+  
+  if (type === 'loan_disbursement') {
+    const loan = findLoan(id);
+    if (!loan) return showNotification('Loan not found', 'error');
+    const settings = lsGet(K_SETTINGS) || { interestRate: 10 };
+    receiptData = {
+      ...loan,
+      interestRate: settings.interestRate
+    };
+  } else if (type === 'repayment') {
+    const reps = lsGet(K_REPS) || [];
+    const rep = reps.find(r => r.id === id);
+    if (!rep) return showNotification('Repayment not found', 'error');
+    receiptData = rep;
+  }
+  
+  if (!receiptData) return showNotification('Receipt data not found', 'error');
+  
+  const receiptHtml = generateReceipt(receiptType, receiptData);
+  document.getElementById('receiptContent').innerHTML = receiptHtml;
+  
+  // Set up download button
+  const downloadBtn = document.getElementById('downloadReceiptBtn');
+  downloadBtn.onclick = function() {
+    downloadReceipt(receiptType, receiptData);
+  };
+  
+  showModal('receiptModal');
+}
+
+function handleEditRep(repId){
+  const reps = lsGet(K_REPS) || [];
+  const r = reps.find(x=>x.id===repId);
+  if(!r) return showNotification('Repayment not found','error');
+  if(currentUser && currentUser.role === 'agent' && r.agentId !== currentUser.id) return showNotification('Not allowed','error');
+  document.getElementById('editRepId').value = repId;
+  document.getElementById('editRepAmount').value = r.amount;
+  document.getElementById('editRepType').value = r.type;
+  const loan = findLoan(r.loanId);
+  if(loan){ const hint = Number(loan.balance || 0) + Number(r.amount || 0); document.getElementById('editRepBalanceHint').textContent = `Max allowed for new amount: ${money(hint)}`; }
+  else document.getElementById('editRepBalanceHint').textContent = '';
+  showModal('editRepaymentModal');
+}
+
+function handleDeleteRep(repId){
+  if(!currentUser || currentUser.role !== 'admin') return showNotification('Only admin can delete','error');
+  if(!confirm('Delete repayment?')) return;
+  deleteRepayment(repId);
+  showNotification('Repayment deleted','success');
+  refreshAll();
+}
+
+function handleDeleteLoan(loanId){
+  if(!currentUser || currentUser.role !== 'admin') return showNotification('Only admin can delete','error');
+  if(!confirm('Delete loan and all its repayments?')) return;
+  deleteLoan(loanId);
+  showNotification('Loan deleted','success');
+  refreshAll();
+}
+
+function handleReject(loanId){
+  if(!confirm('Reject loan?')) return;
+  rejectLoan(loanId);
+  showNotification('Loan rejected','success');
+  refreshAll();
+}
+
+function handleTakedown(loanId){
+  if(!confirm('Take down loan for correction? This allows the agent to edit details.')) return;
+  takedownLoanForCorrection(loanId);
+  showNotification('Loan taken down for correction','success');
+  refreshAll();
+}
+
+function handleEditAgent(agentId){ const agents = lsGet(K_AGENTS) || []; const a = agents.find(x=>x.id===agentId); if(!a) return showNotification('Agent not found','error'); const name = prompt('Name', a.name); if(name===null) return; const phone = prompt('Phone', a.phone || ''); if(phone===null) return; updateAgent(agentId, { name, phone }); showNotification('Agent updated','success'); refreshAll(); }
+function handleSoftDeleteAgent(agentId){ if(!confirm('Delete agent (soft-delete)?')) return; softDeleteAgent(agentId); showNotification('Agent deleted (soft)','success'); refreshAll(); }
+function handleRestoreAgent(agentId){ if(!confirm('Restore agent?')) return; restoreAgent(agentId); showNotification('Agent restored','success'); refreshAll(); }
+function handleResetAgentPwd(agentId){
+  if(!currentUser || currentUser.role !== 'admin') return showNotification('Only admin can reset','error');
+  if(!confirm('Reset agent password? This will set a random temporary password and email is required to share it.')) return;
+  // For simplicity we will set a random password in Auth and alert the admin the temp password.
+  const temp = Math.random().toString(36).slice(2,10);
+  // reset via Admin SDK would be ideal; client-side can't change other user's password directly.
+  // So we prompt admin to instruct the agent to use 'forgot password' or recreate the user.
+  alert('Client SDK cannot reset another user password. Ask the agent to use "Forgot password" or recreate the account.');
+}
+
+/* expose to global */
+window.openLoanDetails = openLoanDetails;
+window.openApprove = openApprove;
+window.openRepaymentModal = openRepaymentModal;
+window.openEditLoanModal = openEditLoanModal;
+window.handleEditRep = handleEditRep;
+window.handleDeleteRep = handleDeleteRep;
+window.handleDeleteLoan = handleDeleteLoan;
+window.handleEditAgent = handleEditAgent;
+window.handleDeleteAgent = handleSoftDeleteAgent;
+window.handleRestoreAgent = handleRestoreAgent;
+window.showReceipt = showReceipt;
+
+/* change password for current user (uses Firebase Auth) */
+function changePasswordHandler(){
+  const current = document.getElementById('currentPwd').value;
+  const np = document.getElementById('newPwd').value;
+  const cp = document.getElementById('confirmPwd').value;
+  if(!current || !np || !cp) return showNotification('Fill all fields','error');
+  if(np !== cp) return showNotification('Passwords do not match','error');
+  // Reauthenticate then update password
+  const user = auth.currentUser;
+  if(!user) return showNotification('Not signed in','error');
+  const cred = firebase.auth.EmailAuthProvider.credential(user.email, current);
+  user.reauthenticateWithCredential(cred).then(() => {
+    user.updatePassword(np).then(()=> {
+      showNotification('Password changed','success');
+      document.getElementById('currentPwd').value=''; document.getElementById('newPwd').value=''; document.getElementById('confirmPwd').value='';
+    }).catch(err => showNotification(err.message || 'Could not update password','error'));
+  }).catch(err => showNotification('Current password incorrect','error'));
+}
+
+/* Render charts (same as before) */
+function renderCharts(){
+  try {
+    const loans = lsGet(K_LOANS) || [];
+    const reps = lsGet(K_REPS) || [];
+    if(document.getElementById('loanStatusChart')) {
+      const ctx = document.getElementById('loanStatusChart');
+      if(loanChart) loanChart.destroy();
+      const labels = ['pending','active','completed','rejected','correction'];
+      const counts = labels.map(l => loans.filter(x=>x.status===l).length);
+      loanChart = new Chart(ctx, { type:'doughnut', data:{ labels, datasets:[{ data: counts, backgroundColor:['#ffd166','#b3ffe0','#d6ffd9','#ffd9d9','#ffe5b4'] }] } });
+    }
+    if(document.getElementById('repTrendChart')) {
+      const ctx2 = document.getElementById('repTrendChart');
+      if(repChart) repChart.destroy();
+      const months = []; const monthly = [];
+      for(let i=5;i>=0;i--){ const d=new Date(); d.setMonth(d.getMonth()-i); months.push(d.toLocaleString('default',{month:'short'})); monthly.push(0); }
+      reps.forEach(r => {
+        const d = new Date(r.date);
+        const nowMonth = new Date(); const base = new Date(nowMonth.getFullYear(), nowMonth.getMonth()-5, 1);
+        const idx = (d.getFullYear() - base.getFullYear())*12 + (d.getMonth() - base.getMonth());
+        if(idx>=0 && idx<6) monthly[idx] += Number(r.amount||0);
+      });
+      repChart = new Chart(ctx2, { type:'line', data:{ labels: months, datasets:[{ label:'Repayments (₵)', data: monthly, borderColor:'#1f8cff', backgroundColor:'rgba(31,140,255,0.06)', tension:0.3 }] } });
+    }
+    if(currentUser && currentUser.role === 'agent') {
+      const myLoans = (lsGet(K_LOANS)||[]).filter(l=>l.agentId===currentUser.id);
+      const ctxA = document.getElementById('agentLoanStatusChart');
+      if(ctxA){ if(agentLoanChart) agentLoanChart.destroy(); const labels=['pending','active','completed','rejected','correction']; const counts=labels.map(l=>myLoans.filter(x=>x.status===l).length); agentLoanChart = new Chart(ctxA,{ type:'doughnut', data:{ labels, datasets:[{ data:counts, backgroundColor:['#ffd166','#b3ffe0','#d6ffd9','#ffd9d9','#ffe5b4'] }] } }); }
+      const ctxB = document.getElementById('agentRepTrendChart'); if(agentRepChart) agentRepChart.destroy();
+      if(ctxB) {
+        const months=[]; const monthlyA=[];
+        for(let i=5;i>=0;i--){ const d=new Date(); d.setMonth(d.getMonth()-i); months.push(d.toLocaleString('default',{month:'short'})); monthlyA.push(0); }
+        (lsGet(K_REPS)||[]).filter(r=>r.agentId===currentUser.id).forEach(r=>{
+          const d = new Date(r.date);
+          const nowMonth = new Date(); const base = new Date(nowMonth.getFullYear(), nowMonth.getMonth()-5, 1);
+          const idx = (d.getFullYear() - base.getFullYear())*12 + (d.getMonth() - base.getMonth());
+          if(idx>=0 && idx<6) monthlyA[idx] += Number(r.amount||0);
+        });
+        agentRepChart = new Chart(ctxB,{ type:'line', data:{ labels: months, datasets:[{ label:'My Repayments (₵)', data: monthlyA, borderColor:'#1f8cff', backgroundColor:'rgba(31,140,255,0.06)', tension:0.3 }] } });
+      }
+    } else {
+      if(document.getElementById('agentLoanStatusChart')) { if(agentLoanChart) agentLoanChart.destroy(); }
+      if(document.getElementById('agentRepTrendChart')) { if(agentRepChart) agentRepChart.destroy(); }
+    }
+  } catch(e) { console.warn('renderCharts error', e); }
+}
+
+/* ===============================
+  Realtime DB listeners (push remote -> localStorage -> UI)
+  =============================== */
+
+function attachRealtimeListeners(){
+  if(!window.db) return;
+  const keys = [K_USERS,K_AGENTS,K_LOANS,K_REPS,K_NOTIFS,K_SETTINGS];
+  keys.forEach(k=>{
+    try{
+      const ref = firebase.database().ref('/' + k);
+      ref.on('value', snap=>{
+        const val = snap.exists() ? snap.val() : null;
+        if(val !== null){
+          try{ localStorage.setItem(k, JSON.stringify(val)); } catch(e){ console.warn('local write failed', e); }
+          refreshAll();
+        }
+      });
+    }catch(e){ console.warn('attach listener error', e); }
+  });
+}
+
+/* seed remote arrays if missing (only runs if Firebase initialized) */
+async function seedRemoteIfEmpty(){
+  if(!window.db) return;
+  try{
+    const rootSnap = await firebase.database().ref('/').get();
+    const root = rootSnap.exists() ? (rootSnap.val() || {}) : {};
+    if(!root[K_USERS]){
+      // if admin exists in Auth and not in DB, create admin profile
+      // attempt to find admin by email in Auth is not possible client-side; we create default placeholder
+      const adminProfile = { id: uid(), email: ADMIN_EMAIL, role:'admin', fullName:'EBA Admin', createdAt: now() };
+      await firebase.database().ref('/' + K_USERS).set([adminProfile]);
+      await firebase.database().ref('/' + K_AGENTS).set([]);
+      await firebase.database().ref('/' + K_LOANS).set([]);
+      await firebase.database().ref('/' + K_REPS).set([]);
+      await firebase.database().ref('/' + K_NOTIFS).set([]);
+      await firebase.database().ref('/' + K_SETTINGS).set({ interestRate:10, penaltyRate:50, paymentFrequency:3 });
+    } else {
+      if(!root[K_AGENTS]) await firebase.database().ref('/' + K_AGENTS).set([]);
+      if(!root[K_LOANS]) await firebase.database().ref('/' + K_LOANS).set([]);
+      if(!root[K_REPS]) await firebase.database().ref('/' + K_REPS).set([]);
+      if(!root[K_NOTIFS]) await firebase.database().ref('/' + K_NOTIFS).set([]);
+      if(!root[K_SETTINGS]) await firebase.database().ref('/' + K_SETTINGS).set({ interestRate:10, penaltyRate:50, paymentFrequency:3 });
+    }
+    // pull remote to local
+    const snap = await firebase.database().ref('/').get();
+    const data = snap.val() || {};
+    [K_USERS,K_AGENTS,K_LOANS,K_REPS,K_NOTIFS,K_SETTINGS].forEach(k => { if(data[k] !== undefined) localStorage.setItem(k, JSON.stringify(data[k])); });
+  }catch(e){ console.warn('seedRemoteIfEmpty err', e); }
+}
+
+/* local defaults */
+function seedLocalDefaults(){
+  if(!lsGet(K_SETTINGS)) lsSet(K_SETTINGS, { interestRate:10, penaltyRate:50, paymentFrequency:3 });
+  if(!lsGet(K_USERS)){
+    // NOTE: we don't create a local admin password here. Admin should already exist in Auth console.
+    lsSet(K_USERS, []);
+  }
+  if(!lsGet(K_AGENTS)) lsSet(K_AGENTS, []);
+  if(!lsGet(K_LOANS)) lsSet(K_LOANS, []);
+  if(!lsGet(K_REPS)) lsSet(K_REPS, []);
+  if(!lsGet(K_NOTIFS)) lsSet(K_NOTIFS, []);
+}
+
+/* utility: find loan */
+function findLoan(id){ return (lsGet(K_LOANS) || []).find(l => l.id === id) || null; }
+
+/* ===============================
+  App boot: init firebase, attach listeners, auth state handling
+  =============================== */
+document.addEventListener('DOMContentLoaded', async () => {
+  seedLocalDefaults();
+  const ok = await waitForFirebaseInit(8000);
+  if(ok){
+    // attach realtime listeners and seed if needed
+    await seedRemoteIfEmpty();
+    attachRealtimeListeners();
+    showNotification('Connected to Firebase','success');
+    // auth state observer
+    auth.onAuthStateChanged(async (user) => {
+      if(user){
+        // user signed in
+        // try to find profile in eba_v3_users array by id==uid
+        let users = lsGet(K_USERS) || [];
+        let profile = users.find(u => u.id === user.uid);
+        if(!profile){
+          // maybe DB is storing users as array later; create a minimal profile if not existing
+          profile = { id: user.uid, email: user.email, role: (user.email === ADMIN_EMAIL ? 'admin' : 'agent'), fullName: user.displayName || user.email.split('@')[0], createdAt: now() };
+          users.push(profile);
+          lsSet(K_USERS, users);
+          // and add to agents list if role is agent
+          if(profile.role === 'agent'){
+            let agents = lsGet(K_AGENTS) || [];
+            agents.push({ id: profile.id, name: profile.fullName, email: profile.email, phone:'', username: profile.email.split('@')[0], createdAt: now(), loansProcessed:0, deleted:false, deletedAt:null });
+            lsSet(K_AGENTS, agents);
+          }
+        }
+        // set currentUser
+        currentUser = { uid: user.uid, id: profile.id, email: profile.email, role: profile.role, fullName: profile.fullName, createdAt: profile.createdAt };
+        localStorage.setItem('eba_current_user_v3', JSON.stringify(currentUser));
+        showAppForUser();
+      } else {
+        // not signed in
+        currentUser = null;
+        localStorage.removeItem('eba_current_user_v3');
+        app.style.display = 'none';
+        loginScreen.style.display = 'flex';
+      }
+    });
+  } else {
+    showNotification('Firebase not available — local-only mode', 'error');
+  }
+
+  // restore session if already signed in (handled by onAuthStateChanged)
+  const s = localStorage.getItem('eba_current_user_v3');
+  if(s){ try{ currentUser = JSON.parse(s); showAppForUser(); } catch(e){} }
+  refreshAll();
+});
+
+/* show app depending on role */
+function showAppForUser(){
+  loginScreen.style.display='none'; app.style.display='block';
+  document.getElementById('userWelcome').textContent = `${currentUser.fullName || currentUser.email} (${currentUser.role})`;
+  if(currentUser.role === 'admin'){ 
+    document.getElementById('adminSidebar').style.display='block'; 
+    document.getElementById('agentSidebar').style.display='none'; 
+    switchTab('dashboard'); 
+  } else { 
+    document.getElementById('adminSidebar').style.display='none'; 
+    document.getElementById('agentSidebar').style.display='block'; 
+    switchTab('agentDashboard'); 
+  }
+  refreshAll();
+}
+
+/* tab nav helper */
+document.querySelectorAll('.sidebar a').forEach(a => a.addEventListener('click', e => { 
+  e.preventDefault(); 
+  document.querySelectorAll('.sidebar a').forEach(x=>x.classList.remove('active')); 
+  a.classList.add('active'); 
+  switchTab(a.dataset.tab); 
+}));
+
+function switchTab(tabId){ 
+  document.querySelectorAll('.tab-section').forEach(s => s.style.display='none'); 
+  const sec = document.getElementById(tabId); 
+  if(sec) sec.style.display='block'; 
+  refreshAll(); 
+}
+
+/* modal helpers */
+function showModal(id){ document.getElementById(id).style.display = 'flex'; }
+function hideModal(id){ document.getElementById(id).style.display = 'none'; }
+document.querySelectorAll('.close-modal').forEach(b => b.addEventListener('click', e => { hideModal(e.target.dataset.close); }));
+document.querySelectorAll('.modal').forEach(m => m.addEventListener('click', e => { if(e.target === m) m.style.display='none'; }));
+
+/* End of script */
 </script>
-
 </body>
 </html>

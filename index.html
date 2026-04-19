@@ -474,6 +474,7 @@
     @media(max-width:1100px){ .kpi-grid{grid-template-columns:repeat(2,1fr);} }
     @media(max-width:480px) { .kpi-grid{grid-template-columns:1fr;} }
     @media(max-width:700px) { #adminStatStrip{grid-template-columns:repeat(2,1fr)!important;} }
+    @media(max-width:600px) { #accountGrid{grid-template-columns:1fr!important;} }
     @media(max-width:420px) { #adminStatStrip{grid-template-columns:1fr!important;} }
     .kpi-card {
       background:var(--panel);
@@ -822,7 +823,7 @@
       <div class="login-hero-divider"></div>
       <div class="lhs"><div class="num">5000+</div><div class="lbl">Active Clients</div></div>
       <div class="login-hero-divider"></div>
-      <div class="lhs"><div class="num">16</div><div class="lbl">Regions covered</div></div>
+      <div class="lhs"><div class="num">16</div><div class="lbl">Regions Covered</div></div>
     </div>
   </div>
 
@@ -1314,8 +1315,15 @@
         </div>
         <div class="danger-zone">
           <h4>⚠ Danger Zone</h4>
-          <p class="muted" style="font-size:13px;margin-bottom:14px">Clear all loans & repayments from the system. This cannot be undone.</p>
-          <button class="btn btn-danger btn-sm" id="clearDataBtn"><span data-lucide="trash-2" style="width:14px;height:14px"></span> Clear All Loan Data</button>
+          <p class="muted" style="font-size:13px;margin-bottom:16px">These actions are irreversible. Proceed with caution.</p>
+          <div style="display:flex;gap:10px;flex-wrap:wrap">
+            <button class="btn btn-warn btn-sm" id="resetAllOverdueBtn">
+              <span data-lucide="refresh-ccw" style="width:14px;height:14px"></span> Reset ALL Overdue → Active (clears penalties)
+            </button>
+            <button class="btn btn-danger btn-sm" id="clearDataBtn">
+              <span data-lucide="trash-2" style="width:14px;height:14px"></span> Clear All Loan Data
+            </button>
+          </div>
         </div>
       </section>
 
@@ -1346,6 +1354,9 @@
         </div>
         <div class="card">
           <div class="card-body">
+            <div class="filter-row">
+              <input class="form-control" id="filterMyRepSearch" placeholder="Search client…" style="max-width:260px"/>
+            </div>
             <div class="table-wrap">
               <table>
                 <thead><tr><th>Client</th><th>Amount</th><th>Type</th><th>Method</th><th>Date</th><th>Actions</th></tr></thead>
@@ -1359,22 +1370,40 @@
       <!-- ====== AGENT: ACCOUNT ====== -->
       <section id="agentAccount" class="tab-section">
         <div class="page-header">
-          <div><div class="page-title">My Account</div><div class="page-subtitle">Manage your account settings</div></div>
+          <div><div class="page-title">My Account</div><div class="page-subtitle">Your profile and security settings</div></div>
         </div>
-        <div class="card" style="max-width:480px">
-          <div class="card-header"><div class="card-title">Change Password</div></div>
-          <div class="card-body">
-            <div class="form-group">
-              <label class="form-label">New Password</label>
-              <input type="password" id="newPwd" class="form-control" placeholder="New password (min 6 chars)"/>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;max-width:860px" id="accountGrid">
+          <!-- Profile card -->
+          <div class="card">
+            <div class="card-header"><div class="card-title">Profile</div></div>
+            <div class="card-body">
+              <div style="display:flex;align-items:center;gap:16px;margin-bottom:20px">
+                <div id="acctAvatar" style="width:60px;height:60px;border-radius:50%;background:var(--grad-hero);display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:800;color:#fff;flex-shrink:0;box-shadow:0 4px 16px var(--accent-glow)">?</div>
+                <div>
+                  <div id="acctName" style="font-size:18px;font-weight:700;margin-bottom:4px">—</div>
+                  <div id="acctEmail" class="micro">—</div>
+                  <div id="acctRole" style="margin-top:4px"></div>
+                </div>
+              </div>
+              <div id="acctStats" style="display:grid;grid-template-columns:1fr 1fr;gap:10px"></div>
             </div>
-            <div class="form-group">
-              <label class="form-label">Confirm Password</label>
-              <input type="password" id="confirmPwd" class="form-control" placeholder="Confirm new password"/>
+          </div>
+          <!-- Change Password card -->
+          <div class="card">
+            <div class="card-header"><div class="card-title">Change Password</div></div>
+            <div class="card-body">
+              <div class="form-group">
+                <label class="form-label">New Password</label>
+                <input type="password" id="newPwd" class="form-control" placeholder="Min 6 characters"/>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Confirm Password</label>
+                <input type="password" id="confirmPwd" class="form-control" placeholder="Confirm new password"/>
+              </div>
+              <button class="btn btn-primary" id="changePwdBtn" style="width:100%">
+                <span data-lucide="lock" style="width:14px;height:14px"></span> Update Password
+              </button>
             </div>
-            <button class="btn btn-primary" id="changePwdBtn">
-              <span data-lucide="lock" style="width:14px;height:14px"></span> Change Password
-            </button>
           </div>
         </div>
       </section>
@@ -2093,7 +2122,38 @@ function switchTab(id){
   document.querySelectorAll('.tab-section').forEach(s=>{ s.style.display='none'; s.classList.remove('active'); });
   const el = document.getElementById(id);
   if(el){ el.style.display='block'; el.classList.add('active'); }
+  // Populate account tab when opened
+  if(id === 'agentAccount' && currentUser) populateAccountTab();
   refreshAll();
+}
+
+function populateAccountTab(){
+  const u = currentUser;
+  if(!u) return;
+  const initials = (u.fullName||u.email||'?').split(' ').map(w=>w[0]||'').join('').toUpperCase().slice(0,2);
+  const av = document.getElementById('acctAvatar');
+  const nm = document.getElementById('acctName');
+  const em = document.getElementById('acctEmail');
+  const rl = document.getElementById('acctRole');
+  const st = document.getElementById('acctStats');
+  if(av) av.textContent = initials;
+  if(nm) nm.textContent = u.fullName || u.email;
+  if(em) em.textContent = u.email;
+  if(rl) rl.innerHTML = `<span style="display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:99px;font-size:10px;font-weight:700;background:${u.role==='admin'?'rgba(251,191,36,0.15)':'rgba(14,165,233,0.15)'};color:${u.role==='admin'?'var(--gold)':'var(--accent)'}">${u.role==='admin'?'⭐ Administrator':'👤 Field Agent'}</span>`;
+  if(st && u.role === 'agent'){
+    const myL = loans().filter(l=>l.agentId===u.id);
+    const myR = reps().filter(r=>r.agentId===u.id);
+    st.innerHTML = [
+      {label:'Total Loans',value:myL.length,color:'var(--accent)'},
+      {label:'Active Loans',value:myL.filter(l=>l.status==='active').length,color:'var(--success)'},
+      {label:'Completed',value:myL.filter(l=>l.status==='completed').length,color:'var(--cyan)'},
+      {label:'Total Collected',value:money(myR.reduce((s,r)=>s+ +r.amount,0)),color:'var(--gold)'},
+    ].map(s=>`<div style="background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px">
+      <div style="font-size:10px;color:var(--text-3);margin-bottom:4px;text-transform:uppercase;letter-spacing:0.05em">${s.label}</div>
+      <div style="font-family:var(--font-display);font-size:18px;font-weight:800;color:${s.color}">${s.value}</div>
+    </div>`).join('');
+  }
+  lucide.createIcons({elements:[document.getElementById('agentAccount')]});
 }
 
 /* ====================================================
@@ -2378,6 +2438,31 @@ document.getElementById('clearDataBtn').addEventListener('click',()=>{
   if(!confirm('This will permanently delete ALL loans and repayments. Continue?')) return;
   set(K.loans,[]); set(K.reps,[]);
   toast('All loan data cleared','info');
+  refreshAll();
+});
+
+document.getElementById('resetAllOverdueBtn').addEventListener('click',()=>{
+  const overdueLoans = loans().filter(l => l.status === 'overdue');
+  if(!overdueLoans.length) return toast('No overdue loans to reset','info');
+  if(!confirm(`Reset ALL ${overdueLoans.length} overdue loan(s) to Active?
+
+This will reverse all penalties and reset payment dates for each loan.
+
+Continue?`)) return;
+  const arr = loans();
+  let totalPenaltiesReversed = 0;
+  const nextD = new Date(); nextD.setMonth(nextD.getMonth()+(+(settings().paymentFrequency)||3));
+  arr.forEach((loan,i) => {
+    if(loan.status !== 'overdue') return;
+    const pen = +(loan.penalties||0);
+    totalPenaltiesReversed += pen;
+    const cleanAudit = (loan.audit||[]).filter(a=>a.type!=='penalty');
+    cleanAudit.push({ts:now(),by:currentUser?.id||'admin',type:'reset',note:`Bulk reset: overdue→active · ${money(pen)} penalties reversed`});
+    arr[i] = {...loan, status:'active', balance:Math.max(0,+(loan.balance||0)-pen), penalties:0,
+      nextPaymentDate:nextD.toISOString(), audit:cleanAudit};
+  });
+  set(K.loans,arr);
+  toast(`${overdueLoans.length} loans reset to Active · ${money(totalPenaltiesReversed)} in penalties reversed`,'success');
   refreshAll();
 });
 
@@ -2679,20 +2764,40 @@ document.getElementById('paystackBtn').addEventListener('click',function(){
   if(!loan) return toast('Loan not found','error');
   if(amount>+loan.balance) return toast(`Amount exceeds balance (${money(loan.balance)})`,'error');
   const ref='EBA_'+uid();
-  const handler=PaystackPop.setup({
-    key:PAYSTACK_KEY,
-    email:currentUser.email,
-    amount:Math.round(amount*100),
-    currency:'GHS',
+  const handler = PaystackPop.setup({
+    key: PAYSTACK_KEY,
+    email: currentUser.email,
+    amount: Math.round(amount * 100),  // pesewas
+    currency: 'GHS',
     ref,
-    metadata:{ loan_id:loanId, client:loan.clientName, type },
-    onClose(){ toast('Payment cancelled','info'); },
-    callback(resp){
-      const r=createRepayment({loanId,amount,type},currentUser.id,resp.reference);
+    /* ── Branding shown on Paystack popup ── */
+    label: 'EBA LOANS HUB',           // shown as payer label
+    description: `Loan Repayment — ${loan.clientName} (${loan.ghanaCard || loanId})`,
+    /* ── Custom fields appear on the payment popup and receipt email ── */
+    metadata: {
+      custom_fields: [
+        { display_name: 'Business',      variable_name: 'business',    value: 'EBA LOANS HUB' },
+        { display_name: 'Client Name',   variable_name: 'client_name', value: loan.clientName },
+        { display_name: 'Ghana Card',    variable_name: 'ghana_card',  value: loan.ghanaCard || '—' },
+        { display_name: 'Loan ID',       variable_name: 'loan_id',     value: loanId },
+        { display_name: 'Payment Type',  variable_name: 'type',        value: type },
+        { display_name: 'Loan Balance',  variable_name: 'balance',     value: money(loan.balance) },
+      ],
+      loan_id: loanId,
+      client: loan.clientName,
+      type,
+      agent_email: currentUser.email,
+    },
+    /* NOTE: To change the merchant NAME shown on the popup header (e.g. "Your Biz Name"),
+       go to https://dashboard.paystack.com → Settings → Business → update Business Name to
+       "EBA LOANS HUB". That field controls what appears as the merchant on the Paystack popup. */
+    onClose() { toast('Payment window closed', 'info'); },
+    callback(resp) {
+      const r = createRepayment({ loanId, amount, type }, currentUser.id, resp.reference);
       if(r.success){
-        toast('Paystack payment confirmed!');
+        toast(`✓ Payment of ${money(amount)} confirmed via Paystack!`, 'success');
         closeModal('modalRepayment');
-        openReceipt('repayment',{...reps().find(x=>x.id===r.repId)});
+        openReceipt('repayment', {...reps().find(x => x.id === r.repId)});
         refreshAll();
       }
     }
@@ -2768,7 +2873,17 @@ window.openLoanDetails = id=>{
       ${(loan.audit||[]).map(a=>`<div class="audit-item"><span class="audit-time">${new Date(a.ts).toLocaleString()}</span><span class="muted">${a.type}</span><span style="flex:1">${escHtml(a.note||'')}</span></div>`).join('')||'<p class="micro">No audit entries</p>'}
     </div>
   `;
-  document.getElementById('loanDetailsContent').innerHTML=content;
+  document.getElementById('loanDetailsContent').innerHTML = content;
+  // Action buttons below details
+  const actionsHtml = `
+    <div style="display:flex;gap:10px;margin-top:20px;flex-wrap:wrap">
+      ${['active','overdue'].includes(loan.status)?`<button class="btn btn-primary btn-sm" onclick="closeModal('modalLoanDetails');openRepayment('${loan.id}')"><span data-lucide="repeat" style="width:14px;height:14px"></span> Record Repayment</button>`:''}
+      ${loan.status==='overdue'?`<button class="btn btn-success btn-sm" onclick="closeModal('modalLoanDetails');resetToActiveUI('${loan.id}')"><span data-lucide="refresh-ccw" style="width:14px;height:14px"></span> Reset to Active</button>`:''}
+      ${['pending','correction'].includes(loan.status)&&currentUser?.role==='admin'?`<button class="btn btn-success btn-sm" onclick="closeModal('modalLoanDetails');openApprove('${loan.id}')"><span data-lucide="check-circle" style="width:14px;height:14px"></span> Approve Loan</button>`:''}
+      <button class="btn btn-ghost btn-sm" onclick="closeModal('modalLoanDetails');openEditLoan('${loan.id}')"><span data-lucide="edit-2" style="width:14px;height:14px"></span> Edit</button>
+    </div>`;
+  document.getElementById('loanDetailsContent').innerHTML += actionsHtml;
+  lucide.createIcons({elements:[document.getElementById('loanDetailsContent')]});
   openModal('modalLoanDetails');
 };
 
@@ -2878,19 +2993,64 @@ document.getElementById('downloadReceiptBtn').addEventListener('click',()=>{
    NOTIFICATIONS
    ==================================================== */
 document.getElementById('notifBtn').addEventListener('click',()=>{
-  const wrap=document.getElementById('notifListWrap');
-  const userNotifs=notifs().filter(n=>n.userId===currentUser?.id);
-  if(!userNotifs.length){ wrap.innerHTML='<div class="empty-state"><p>No notifications yet</p></div>'; }
-  else {
-    wrap.innerHTML=userNotifs.map(n=>`
-      <div class="notif-item">
-        <div class="notif-item-title">${escHtml(n.title)}</div>
-        <div class="notif-item-body">${escHtml(n.body)}</div>
-        <div class="notif-item-time">${new Date(n.createdAt).toLocaleString()}</div>
-      </div>`).join('');
+  const wrap = document.getElementById('notifListWrap');
+  const userNotifs = notifs().filter(n => n.userId === currentUser?.id);
+
+  // Mark all as read
+  const allNotifs = notifs();
+  let markedAny = false;
+  allNotifs.forEach(n => { if(n.userId === currentUser?.id && !n.read){ n.read=true; markedAny=true; } });
+  if(markedAny) set(K.notifs, allNotifs);
+  const nb = document.getElementById('notifBadge');
+  if(nb) nb.style.display = 'none';
+
+  if(!userNotifs.length){
+    wrap.innerHTML = '<div class="empty-state" style="padding:32px"><span data-lucide="bell-off" style="width:32px;height:32px;opacity:0.3;display:block;margin:0 auto 12px"></span><p>No notifications yet</p></div>';
+  } else {
+    const NOTIF_ICONS = {
+      LOAN_SUBMITTED:'send', LOAN_APPROVED:'check-circle', LOAN_REJECTED:'x-circle',
+      LOAN_OVERDUE:'alert-triangle', LOAN_TAKEDOWN:'alert-octagon',
+      REPAYMENT_RECORDED:'dollar-sign', LOAN_RESET:'refresh-ccw',
+      LOAN_DELETED:'trash-2', REPAYMENT_RECORDED:'repeat'
+    };
+    wrap.innerHTML = `
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 18px;border-bottom:1px solid var(--border)">
+        <span style="font-size:12px;color:var(--text-3)">${userNotifs.length} notification${userNotifs.length!==1?'s':''}</span>
+        <button class="btn btn-xs btn-ghost" onclick="clearAllNotifs()">Clear all</button>
+      </div>
+      ` + userNotifs.map(n => {
+        const icon = NOTIF_ICONS[n.title] || 'bell';
+        const isNew = !n.read;
+        const colorMap = {
+          LOAN_APPROVED:'var(--success)', REPAYMENT_RECORDED:'var(--accent)',
+          LOAN_REJECTED:'var(--danger)',  LOAN_OVERDUE:'var(--warn)',
+          LOAN_RESET:'var(--success)'
+        };
+        const col = colorMap[n.title] || 'var(--text-2)';
+        return `<div class="notif-item" style="${isNew?'background:rgba(14,165,233,0.04);border-left:3px solid var(--accent)':'border-left:3px solid transparent'}">
+          <div style="display:flex;align-items:flex-start;gap:10px">
+            <div style="width:28px;height:28px;border-radius:50%;background:rgba(255,255,255,0.06);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+              <span data-lucide="${icon}" style="width:13px;height:13px;color:${col}"></span>
+            </div>
+            <div style="flex:1;min-width:0">
+              <div class="notif-item-title">${escHtml(n.title.replace(/_/g,' '))}</div>
+              <div class="notif-item-body">${escHtml(n.body)}</div>
+              <div class="notif-item-time">${new Date(n.createdAt).toLocaleString('en-GH',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'})}</div>
+            </div>
+          </div>
+        </div>`;
+      }).join('');
+    lucide.createIcons({elements:[wrap]});
   }
   openModal('modalNotif');
 });
+
+window.clearAllNotifs = () => {
+  const all = notifs().filter(n => n.userId !== currentUser?.id);
+  set(K.notifs, all);
+  closeModal('modalNotif');
+  toast('Notifications cleared','info');
+};
 
 /* ====================================================
    CAMERA
@@ -2967,6 +3127,7 @@ document.getElementById('changePwdBtn').addEventListener('click',async()=>{
   if(el) el.addEventListener('input',()=>renderAllLoans());
 });
 document.getElementById('filterRepSearch')?.addEventListener('input',renderAllReps);
+document.getElementById('filterMyRepSearch')?.addEventListener('input',()=>{ if(currentUser) renderMyReps(); });
 
 /* ====================================================
    RENDER FUNCTIONS
@@ -3008,15 +3169,55 @@ function adminActions(loan,role){
 window.resetToActiveUI = id => {
   const loan = findLoan(id);
   if(!loan) return;
-  if(!confirm(`Reset "${loan.clientName}" from OVERDUE back to ACTIVE?
-This removes the overdue flag without clearing penalties already applied.`)) return;
-  const today = new Date(); today.setMonth(today.getMonth()+(+(settings().paymentFrequency)||3));
-  updateLoan(id,{
-    status:'active',
-    nextPaymentDate: today.toISOString(),
-    audit:[...(loan.audit||[]),{ts:now(),by:currentUser?.id||'admin',type:'reset',note:'Admin reset: overdue → active'}]
+  const penaltyTotal = +(loan.penalties || 0);
+  const msg = penaltyTotal > 0
+    ? `Reset "${loan.clientName}" from OVERDUE to ACTIVE?
+
+This will:
+✓ Clear the overdue flag
+✓ Reverse all penalties (${money(penaltyTotal)} will be removed from balance)
+✓ Reset next payment date
+
+Continue?`
+    : `Reset "${loan.clientName}" from OVERDUE to ACTIVE?
+
+This clears the overdue flag and resets the next payment date.
+
+Continue?`;
+  if(!confirm(msg)) return;
+
+  const arr = loans();
+  const i = arr.findIndex(l => l.id === id);
+  if(i === -1) return;
+
+  // Reverse penalty charges from balance
+  const balanceWithoutPenalties = Math.max(0, +(arr[i].balance || 0) - penaltyTotal);
+
+  // Push next payment date forward from today
+  const nextD = new Date();
+  nextD.setMonth(nextD.getMonth() + (+(settings().paymentFrequency) || 3));
+
+  // Strip penalty audit entries, add a reset entry
+  const cleanAudit = (arr[i].audit || []).filter(a => a.type !== 'penalty');
+  cleanAudit.push({
+    ts: now(),
+    by: currentUser?.id || 'admin',
+    type: 'reset',
+    note: `Admin reset: overdue → active${penaltyTotal > 0 ? ` · ${money(penaltyTotal)} in penalties reversed` : ''}`
   });
-  toast('Loan reset to Active','info');
+
+  arr[i] = {
+    ...arr[i],
+    status: 'active',
+    balance: balanceWithoutPenalties,
+    penalties: 0,
+    nextPaymentDate: nextD.toISOString(),
+    audit: cleanAudit
+  };
+  set(K.loans, arr);
+  pushNotif(arr[i].agentId, 'LOAN_RESET',
+    `Loan for ${arr[i].clientName} reset to Active. Penalties of ${money(penaltyTotal)} reversed.`);
+  toast(`Loan reset to Active · ${money(penaltyTotal)} in penalties cleared`, 'success');
   refreshAll();
 };
 
@@ -3073,16 +3274,21 @@ function renderAdminDash(){
   const over=allLoans.filter(l=>l.status==='overdue');
   document.getElementById('overdueBody').innerHTML=over.map(l=>{
     const days=l.nextPaymentDate?Math.max(0,Math.floor((new Date()-new Date(l.nextPaymentDate))/86400000)):0;
-    return `<tr class="overdue-row">
-      <td><strong>${escHtml(l.clientName)}</strong></td>
-      <td>${escHtml(l.ghanaCard)}</td>
-      <td>${money(l.amount)}</td>
-      <td>${money(l.balance)}</td>
-      <td style="color:var(--danger);font-weight:600">${days}d</td>
-      <td>${money(l.penalties||0)}</td>
+    return `<tr>
+      <td>
+        <div style="display:flex;align-items:center;gap:8px">
+          ${l.passportUrl?`<img src="${l.passportUrl}" style="width:30px;height:30px;border-radius:50%;object-fit:cover;border:2px solid var(--danger);flex-shrink:0"/>`:`<div style="width:30px;height:30px;border-radius:50%;background:var(--grad-danger);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;color:#fff;flex-shrink:0">${escHtml((l.clientName||'?')[0].toUpperCase())}</div>`}
+          <div><strong style="color:var(--danger)">${escHtml(l.clientName)}</strong><div class="micro">${escHtml(l.phone||'')}</div></div>
+        </div>
+      </td>
+      <td class="micro">${escHtml(l.ghanaCard)}</td>
+      <td style="color:var(--gold);font-weight:700">${money(l.amount)}</td>
+      <td><span style="color:var(--danger);font-weight:700">${money(l.balance)}</span></td>
+      <td><span style="color:var(--danger);font-weight:700;background:var(--danger-dim);padding:3px 8px;border-radius:99px;font-size:11px">${days}d</span></td>
+      <td style="color:var(--warn)">${money(l.penalties||0)}</td>
       <td>${adminActions(l,'admin')}</td>
     </tr>`;
-  }).join('')||'<tr><td colspan="7" style="text-align:center;padding:20px;color:var(--text-3)">No overdue loans 🎉</td></tr>';
+  }).join('')||'<tr><td colspan="7" style="text-align:center;padding:24px;color:var(--text-3)">🎉 No overdue loans</td></tr>';
   lucide.createIcons();
 }
 
@@ -3092,7 +3298,7 @@ function renderAgentDash(){
   const myReps=reps().filter(r=>r.agentId===currentUser.id);
   document.getElementById('agKpiTotal').textContent=myLoans.length;
   document.getElementById('agKpiPending').textContent=myLoans.filter(l=>l.status==='pending').length;
-  document.getElementById('agKpiActive').textContent=myLoans.filter(l=>l.status==='active').length;
+  document.getElementById('agKpiActive').textContent=myLoans.filter(l=>l.status==='active'||l.status==='overdue').length;
   document.getElementById('agKpiRepaid').textContent=money(myReps.reduce((s,r)=>s+ +r.amount,0));
   const recent=myLoans.slice(0,8);
   document.getElementById('agRecentBody').innerHTML=recent.map(l=>`
@@ -3111,8 +3317,20 @@ function renderAgentDash(){
   const over=myLoans.filter(l=>l.status==='overdue');
   document.getElementById('agOverdueBody').innerHTML=over.map(l=>{
     const days=l.nextPaymentDate?Math.max(0,Math.floor((new Date()-new Date(l.nextPaymentDate))/86400000)):0;
-    return `<tr class="overdue-row"><td><strong>${escHtml(l.clientName)}</strong></td><td>${money(l.amount)}</td><td>${money(l.balance)}</td><td>${days}d</td><td>${money(l.penalties||0)}</td><td>${adminActions(l,'agent')}</td></tr>`;
-  }).join('')||'<tr><td colspan="6" style="text-align:center;padding:20px;color:var(--text-3)">No overdue loans 🎉</td></tr>';
+    return `<tr>
+      <td>
+        <div style="display:flex;align-items:center;gap:8px">
+          ${l.passportUrl?`<img src="${l.passportUrl}" style="width:28px;height:28px;border-radius:50%;object-fit:cover;border:2px solid var(--danger);flex-shrink:0"/>`:`<div style="width:28px;height:28px;border-radius:50%;background:var(--grad-danger);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;color:#fff;flex-shrink:0">${escHtml((l.clientName||'?')[0].toUpperCase())}</div>`}
+          <div><strong style="color:var(--danger)">${escHtml(l.clientName)}</strong><div class="micro">${escHtml(l.ghanaCard)}</div></div>
+        </div>
+      </td>
+      <td style="color:var(--gold);font-weight:700">${money(l.amount)}</td>
+      <td><span style="color:var(--danger);font-weight:700">${money(l.balance)}</span></td>
+      <td><span style="color:var(--danger);font-weight:700;background:var(--danger-dim);padding:3px 8px;border-radius:99px;font-size:11px">${days}d overdue</span></td>
+      <td style="color:var(--warn)">${money(l.penalties||0)}</td>
+      <td>${adminActions(l,'agent')}</td>
+    </tr>`;
+  }).join('')||'<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--text-3)">🎉 No overdue loans — great work!</td></tr>';
   lucide.createIcons();
 }
 
@@ -3248,20 +3466,28 @@ function renderMyLoans(){
 function renderMyReps(){
   if(!currentUser) return;
   const list=reps().filter(r=>r.agentId===currentUser.id);
-  document.getElementById('myRepsBody').innerHTML=list.map(r=>`
-    <tr>
-      <td><strong>${escHtml(r.clientName)}</strong></td>
-      <td class="text-success">${money(r.amount)}</td>
-      <td style="text-transform:capitalize">${r.type}</td>
-      <td>${r.paymentMethod||'manual'}</td>
-      <td>${new Date(r.date).toLocaleDateString()}</td>
+  const myRepSearch=(document.getElementById('filterMyRepSearch')?.value||'').toLowerCase();
+  if(myRepSearch) list=list.filter(r=>(r.clientName||'').toLowerCase().includes(myRepSearch));
+  document.getElementById('myRepsBody').innerHTML=list.map(r=>{
+    const loan=findLoan(r.loanId);
+    return `<tr>
       <td>
-        <div style="display:flex;gap:4px">
-          <button class="btn btn-xs btn-ghost" onclick="openReceiptForRep('${r.id}')"><span data-lucide="receipt" style="width:12px;height:12px"></span></button>
-          <button class="btn btn-xs btn-danger" onclick="deleteRepUI('${r.id}')"><span data-lucide="trash-2" style="width:12px;height:12px"></span></button>
+        <div style="display:flex;align-items:center;gap:8px">
+          ${loan&&loan.passportUrl?`<img src="${loan.passportUrl}" style="width:28px;height:28px;border-radius:50%;object-fit:cover;border:1px solid var(--border-hi);flex-shrink:0"/>`:`<div style="width:28px;height:28px;border-radius:50%;background:var(--grad-hero);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;color:#fff;flex-shrink:0">${escHtml((r.clientName||'?')[0].toUpperCase())}</div>`}
+          <div><strong>${escHtml(r.clientName)}</strong>${loan?`<div class="micro">${loanTypeBadge(loan.loanType||'personal')}</div>`:''}</div>
         </div>
       </td>
-    </tr>`).join('')||'<tr><td colspan="6" class="empty-state"><p>No repayments yet</p></td></tr>';
+      <td><span style="font-weight:700;color:var(--success);font-size:15px">${money(r.amount)}</span></td>
+      <td><span style="text-transform:capitalize;padding:3px 8px;border-radius:99px;font-size:10px;font-weight:700;background:rgba(255,255,255,0.07);color:var(--text-2)">${r.type}</span></td>
+      <td><span style="display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:99px;font-size:10px;font-weight:700;background:${r.paymentMethod==='paystack'?'rgba(11,163,96,0.15)':'rgba(14,165,233,0.12)'};color:${r.paymentMethod==='paystack'?'#10b981':'var(--accent)'}">${r.paymentMethod==='paystack'?'💳 Paystack':'🖊 Manual'}</span></td>
+      <td>${new Date(r.date).toLocaleDateString('en-GH',{day:'2-digit',month:'short',year:'numeric'})}</td>
+      <td>
+        <div style="display:flex;gap:4px">
+          <button class="btn btn-xs btn-ghost" onclick="openReceiptForRep('${r.id}')" title="Receipt"><span data-lucide="receipt" style="width:12px;height:12px"></span></button>
+          <button class="btn btn-xs btn-danger" onclick="deleteRepUI('${r.id}')" title="Delete"><span data-lucide="trash-2" style="width:12px;height:12px"></span></button>
+        </div>
+      </td>
+    </tr>`;}).join('')||'<tr><td colspan="6"><div class="empty-state"><p>No repayments yet</p></div></td></tr>';
   lucide.createIcons();
 }
 

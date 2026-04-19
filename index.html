@@ -541,6 +541,7 @@
 
     /* ═══ TABLES ═══ */
     .table-wrap  { overflow-x:auto; -webkit-overflow-scrolling:touch; }
+    .action-btns { display:flex; gap:3px; flex-wrap:nowrap; }
     table        { width:100%; border-collapse:collapse; min-width:520px; }
     thead tr     { border-bottom:1px solid var(--border-hi); }
     th {
@@ -821,7 +822,7 @@
       <div class="login-hero-divider"></div>
       <div class="lhs"><div class="num">5000+</div><div class="lbl">Active Clients</div></div>
       <div class="login-hero-divider"></div>
-      <div class="lhs"><div class="num">16</div><div class="lbl">Regions</div></div>
+      <div class="lhs"><div class="num">16</div><div class="lbl">Regions covered</div></div>
     </div>
   </div>
 
@@ -1249,7 +1250,7 @@
           <div class="card-body">
             <div class="table-wrap">
               <table>
-                <thead><tr><th>Name</th><th>Email</th><th>Phone</th><th>Loans</th><th>Actions</th></tr></thead>
+                <thead><tr><th>Agent</th><th>Phone</th><th>Portfolio</th><th>Volume</th><th>Actions</th></tr></thead>
                 <tbody id="agentsBody"></tbody>
               </table>
             </div>
@@ -1271,7 +1272,7 @@
       <!-- ====== SETTINGS ====== -->
       <section id="settingsTab" class="tab-section">
         <div class="page-header">
-          <div><div class="page-title">System Settings</div><div class="page-subtitle">Configure EBA Loans Hub parameters</div></div>
+          <div><div class="page-title">System Settings</div><div class="page-subtitle">Configure interest rates, penalties and payment schedules</div></div>
         </div>
         <div class="card">
           <div class="card-header"><div class="card-title">Financial Parameters</div></div>
@@ -1294,7 +1295,18 @@
                   <div class="form-hint">Next payment interval</div>
                 </div>
               </div>
-              <div style="margin-top:20px">
+              <div style="margin-top:16px;display:flex;align-items:center;gap:12px;padding:14px;background:rgba(255,255,255,0.03);border-radius:var(--radius-sm);border:1px solid var(--border)">
+                <label class="toggle-wrap" style="display:flex;align-items:center;gap:10px;cursor:pointer">
+                  <div style="position:relative;display:inline-block;width:44px;height:24px">
+                    <input type="checkbox" id="settPenaltyEnabled" style="opacity:0;width:0;height:0;position:absolute"/>
+                    <span id="toggleTrack" style="position:absolute;cursor:pointer;inset:0;background:rgba(255,255,255,0.1);border-radius:99px;transition:0.3s;border:1px solid var(--border-hi)"></span>
+                    <span id="toggleThumb" style="position:absolute;height:18px;width:18px;left:3px;bottom:3px;background:#fff;border-radius:50%;transition:0.3s"></span>
+                  </div>
+                  <span style="font-size:13px;font-weight:600">Enable Auto-Penalties for Overdue Loans</span>
+                </label>
+                <span class="micro" style="margin-left:auto">Penalty applied after 7-day grace period, only if no payment made</span>
+              </div>
+              <div style="margin-top:16px">
                 <button type="submit" class="btn btn-primary"><span data-lucide="save" style="width:14px;height:14px"></span> Save Settings</button>
               </div>
             </form>
@@ -1481,15 +1493,20 @@
         </div>
         <div style="margin-bottom:16px">
           <label class="form-label">Passport Photo</label>
-          <div class="passport-zone" id="addPassportZone" style="position:relative;cursor:pointer;text-align:center;padding:20px" onclick="document.getElementById('aln_passport').click()">
-            <span data-lucide="upload-cloud" style="width:28px;height:28px;opacity:0.4;display:block;margin:0 auto 8px"></span>
-            <p style="font-size:13px;color:var(--text-2);margin-bottom:6px">Click here or drag to upload passport photo</p>
-            <input type="file" id="aln_passport" accept="image/*" style="display:none"/>
-          </div>
-          <div class="passport-preview-wrap" style="margin-top:10px">
-            <img id="aln_passportPreview" class="passport-img"/>
-            <button type="button" class="camera-btn" id="aln_takePicBtn">
-              <span data-lucide="camera" style="width:14px;height:14px"></span> Use Camera
+          <label for="aln_passport" class="passport-zone" id="addPassportZone" style="display:block;cursor:pointer;text-align:center;padding:24px">
+            <span data-lucide="upload-cloud" style="width:32px;height:32px;opacity:0.45;display:block;margin:0 auto 10px;color:var(--accent)"></span>
+            <p style="font-size:13px;color:var(--text);font-weight:600;margin-bottom:4px">Click to upload passport photo</p>
+            <p style="font-size:11px;color:var(--text-3)">JPG, PNG or WEBP · Max 5MB · Auto-compressed</p>
+            <input type="file" id="aln_passport" accept="image/*" capture="environment" style="display:none"/>
+          </label>
+          <div class="passport-preview-wrap" style="margin-top:12px;display:flex;align-items:center;gap:12px">
+            <img id="aln_passportPreview" class="passport-img" style="display:none;width:80px;height:80px;border-radius:10px;object-fit:cover;border:2px solid var(--accent);box-shadow:0 4px 16px var(--accent-glow)"/>
+            <div id="aln_uploadStatus" style="display:none;font-size:12px;color:var(--success)">
+              <span data-lucide="check-circle" style="width:14px;height:14px;display:inline-block;vertical-align:middle;margin-right:4px"></span>
+              Photo ready
+            </div>
+            <button type="button" class="camera-btn" id="aln_takePicBtn" style="margin-left:auto">
+              <span data-lucide="camera" style="width:14px;height:14px"></span> Camera
             </button>
           </div>
         </div>
@@ -1621,16 +1638,21 @@
       </div>
     </div>
     <div class="modal-body">
-      <div id="repBalanceInfo" style="background:var(--navy-3);border:1px solid var(--border);border-radius:var(--radius-sm);padding:14px;margin-bottom:16px">
-        <div style="font-size:12px;color:var(--text-3);margin-bottom:4px">Current Balance</div>
-        <div class="kpi-value" id="repBalanceAmt" style="font-size:22px">₵0</div>
+      <div id="repClientInfo"></div>
+      <div id="repBalanceInfo" style="background:linear-gradient(135deg,rgba(14,165,233,0.12),rgba(14,165,233,0.05));border:1px solid rgba(14,165,233,0.25);border-radius:var(--radius-sm);padding:16px;margin-bottom:16px">
+        <div style="font-size:11px;color:var(--text-3);margin-bottom:6px;text-transform:uppercase;letter-spacing:0.05em;font-weight:600">Outstanding Balance</div>
+        <div style="font-family:var(--font-display);font-size:28px;font-weight:800;color:var(--accent)" id="repBalanceAmt">₵0</div>
       </div>
       <form id="formRepayment">
         <input type="hidden" id="rep_loanId"/>
         <div class="form-row">
           <div class="form-col">
-            <label class="form-label">Amount (₵)</label>
-            <input id="rep_amount" type="number" class="form-control" placeholder="0.00" required/>
+            <label class="form-label">Amount to Pay (₵)</label>
+            <div style="position:relative">
+              <span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--text-3);font-weight:600;font-size:15px">₵</span>
+              <input id="rep_amount" type="number" step="0.01" min="0.01" class="form-control" placeholder="0.00" required style="padding-left:26px"/>
+            </div>
+            <div id="rep_afterBalance" class="form-hint" style="margin-top:5px"></div>
           </div>
           <div class="form-col">
             <label class="form-label">Payment Type</label>
@@ -1638,6 +1660,7 @@
               <option value="principal">Principal</option>
               <option value="interest">Interest</option>
               <option value="penalty">Penalty</option>
+              <option value="full">Full Settlement</option>
             </select>
           </div>
         </div>
@@ -1721,8 +1744,9 @@
     </div>
     <div class="modal-body">
       <div id="receiptContent"></div>
-      <div style="margin-top:16px;text-align:center">
+      <div style="margin-top:16px;display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
         <button class="btn btn-primary" id="downloadReceiptBtn"><span data-lucide="download" style="width:14px;height:14px"></span> Download PDF</button>
+        <button class="btn btn-ghost" id="printReceiptBtn"><span data-lucide="printer" style="width:14px;height:14px"></span> Print</button>
       </div>
     </div>
   </div>
@@ -1835,21 +1859,65 @@ document.querySelectorAll('.modal-overlay').forEach(mo=>{
 /* ====================================================
    SUPABASE PASSPORT UPLOAD
    ==================================================== */
-async function uploadPassport(file, loanId){
-  if(!sbClient) throw new Error('Supabase not ready');
-  const ext = file.name.split('.').pop();
-  const path = `passports/${loanId}_${uid()}.${ext}`;
-  const { error } = await sbClient.storage.from('passports').upload(path,file,{cacheControl:'3600',upsert:false});
-  if(error) throw new Error(error.message);
-  const { data:{publicUrl} } = sbClient.storage.from('passports').getPublicUrl(path);
-  return publicUrl;
+/* Convert image file to base64 data URL (works offline, no Supabase needed) */
+function fileToBase64(file){
+  return new Promise((resolve,reject)=>{
+    // Resize/compress to max 400x400 before storing
+    const reader = new FileReader();
+    reader.onload = e => {
+      const img = new Image();
+      img.onload = () => {
+        const MAX = 400;
+        let w = img.width, h = img.height;
+        if(w>MAX||h>MAX){ const r=MAX/Math.max(w,h); w=Math.round(w*r); h=Math.round(h*r); }
+        const canvas = document.createElement('canvas');
+        canvas.width=w; canvas.height=h;
+        canvas.getContext('2d').drawImage(img,0,0,w,h);
+        resolve(canvas.toDataURL('image/jpeg',0.82));
+      };
+      img.onerror = reject;
+      img.src = e.target.result;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
 }
-async function deletePassport(url){
-  if(!sbClient||!url) return;
+
+async function uploadPassport(file, loanId){
+  // Path 1: Try Supabase if available and initialised
+  if(sbClient){
+    try{
+      const ext = (file.name||'jpg').split('.').pop().toLowerCase()||'jpg';
+      const path = `passports/${loanId}_${uid()}.${ext}`;
+      const { error } = await sbClient.storage.from('passports')
+        .upload(path, file, {cacheControl:'3600', upsert:true});
+      if(!error){
+        const { data:{publicUrl} } = sbClient.storage.from('passports').getPublicUrl(path);
+        if(publicUrl) return publicUrl;
+      }
+      console.warn('Supabase upload failed, falling back to base64:', error?.message);
+    }catch(e){ console.warn('Supabase error, using base64 fallback:', e.message); }
+  }
+  // Path 2: Fallback — compress and encode as base64 data URL
+  // Stored directly in Firebase with the loan record
   try{
-    const parts = url.split('/'); const fname=parts[parts.length-1];
-    await sbClient.storage.from('passports').remove([`passports/${fname}`]);
-  }catch(e){console.warn(e);}
+    const dataUrl = await fileToBase64(file);
+    return dataUrl; // Store as data URL — works always
+  }catch(e){
+    console.warn('Base64 conversion failed:', e);
+    return ''; // Don't block loan creation over a photo
+  }
+}
+
+async function deletePassport(url){
+  if(!url) return;
+  // Only delete from Supabase if it's a real URL (not a data URL)
+  if(!url.startsWith('data:') && sbClient){
+    try{
+      const parts = url.split('/'); const fname = parts[parts.length-1];
+      await sbClient.storage.from('passports').remove([`passports/${fname}`]);
+    }catch(e){ console.warn('deletePassport error:', e); }
+  }
 }
 
 /* ====================================================
@@ -2142,12 +2210,19 @@ function createRepayment({loanId,amount,type},agentId,paystackRef=''){
   if(+amount>+loan.balance) return {success:false,message:`Amount exceeds balance (${money(loan.balance)})`};
   const rep={id:uid(),loanId,clientName:loan.clientName,amount:+amount,type,date:now(),agentId,paymentMethod:paystackRef?'paystack':'manual',paystackRef};
   const repArr=[rep,...reps()]; set(K.reps,repArr);
-  const newBal=Math.max(0,+loan.balance-+amount);
-  const s=settings();
-  const nextD=new Date(); nextD.setMonth(nextD.getMonth()+(+s.paymentFrequency||3));
-  arr[i]={...loan,balance:newBal,status:newBal<=0?'completed':loan.status,
-    nextPaymentDate:nextD.toISOString(),
-    audit:[...(loan.audit||[]),{ts:now(),by:agentId,type:'repayment',note:`${type} ${money(amount)}${paystackRef?' via Paystack':''}`}]};
+  const newBal = Math.max(0, +loan.balance - +amount);
+  const s = settings();
+  // Push next payment date forward from TODAY by paymentFrequency months
+  const nextD = new Date(); nextD.setMonth(nextD.getMonth() + (+s.paymentFrequency||3));
+  // Determine correct status after payment
+  let newStatus;
+  if(newBal <= 0)           newStatus = 'completed';
+  else if(loan.status === 'overdue') newStatus = 'active'; // payment clears overdue flag
+  else                      newStatus = loan.status;
+  arr[i] = {...loan, balance:newBal, status:newStatus,
+    nextPaymentDate: nextD.toISOString(),
+    audit:[...(loan.audit||[]),{ts:now(),by:agentId,type:'repayment',
+      note:`${type} ${money(amount)}${paystackRef?' via Paystack':''} — balance: ${money(newBal)}`}]};
   set(K.loans,arr);
   pushNotif(loan.agentId,'REPAYMENT_RECORDED',`Repayment of ${money(amount)} recorded for ${loan.clientName}`);
   return {success:true,repId:rep.id};
@@ -2181,50 +2256,121 @@ function pushNotif(userId,title,body){
   set(K.notifs,arr);
 }
 
-/* OVERDUE CHECK */
+/* OVERDUE CHECK — clean, accurate, penalty-safe
+   Rules:
+   1. If balance <= 0  → force 'completed', never overdue
+   2. If no nextPaymentDate → skip (not yet disbursed)
+   3. If nextPaymentDate is in the future → ensure status is 'active'
+   4. If nextPaymentDate is past AND balance > 0 → mark 'overdue'
+   5. Penalties only apply when:
+      - Loan has been overdue > 7 days with no repayment recorded
+        in that same 7-day window (prevents double-penalising)
+      - penaltyEnabled must be true in settings
+*/
 function checkOverdue(){
-  const s=settings(); const arr=loans(); let changed=false;
-  const today=new Date(); today.setHours(0,0,0,0);
-  arr.forEach((loan,i)=>{
-    if(loan.status!=='active') return;
-    if(!loan.nextPaymentDate) return;
-    const next=new Date(loan.nextPaymentDate);
-    if(next<today){
-      const days=Math.floor((today-next)/(86400000));
-      const weeks=Math.floor(days/7);
-      const applied=(loan.audit||[]).filter(a=>a.type==='penalty').length;
-      if(weeks>applied){
-        const pen=+(s.penaltyRate||50);
-        arr[i].balance=+(arr[i].balance||0)+pen;
-        arr[i].penalties=(+(arr[i].penalties)||0)+pen;
-        arr[i].status='overdue';
-        arr[i].audit=[...(arr[i].audit||[]),{ts:now(),by:'system',type:'penalty',note:`Auto-penalty ₵${pen} for ${days}d overdue`}];
-        pushNotif(loan.agentId,'LOAN_OVERDUE',`Penalty of ₵${pen} applied to ${loan.clientName} loan`);
-        changed=true;
-      } else if(arr[i].status==='active'){ arr[i].status='overdue'; changed=true; }
+  const s = settings();
+  const penaltyEnabled = s.penaltyEnabled !== false; // default on unless explicitly off
+  const arr = loans();
+  let changed = false;
+  const today = new Date(); today.setHours(0,0,0,0);
+
+  arr.forEach((loan, i) => {
+    // Rule 1 — balance cleared → completed
+    if(+loan.balance <= 0 && loan.status !== 'completed' && loan.status !== 'pending' && loan.status !== 'rejected' && loan.status !== 'correction'){
+      arr[i].status = 'completed';
+      changed = true;
+      return;
     }
+    // Only process active / overdue loans that have been disbursed
+    if(!['active','overdue'].includes(loan.status)) return;
+    if(!loan.nextPaymentDate) return;
+    if(+loan.balance <= 0) return; // already handled above
+
+    const next = new Date(loan.nextPaymentDate); next.setHours(0,0,0,0);
+
+    if(next >= today){
+      // Not yet due — ensure active
+      if(loan.status === 'overdue'){ arr[i].status = 'active'; changed = true; }
+      return;
+    }
+
+    // Past due date — mark overdue
+    if(loan.status === 'active'){ arr[i].status = 'overdue'; changed = true; }
+
+    // Penalty: only if enabled AND no repayment in last 7 days
+    if(!penaltyEnabled) return;
+    const daysOverdue = Math.floor((today - next) / 86400000);
+    if(daysOverdue < 7) return; // grace period — first week no penalty
+
+    // Check last repayment date for this loan
+    const loanReps = (get(K.reps)||[]).filter(r => r.loanId === loan.id);
+    const lastRepDate = loanReps.length
+      ? new Date(Math.max(...loanReps.map(r => new Date(r.date).getTime())))
+      : null;
+    const daysSinceLastRep = lastRepDate
+      ? Math.floor((today - lastRepDate) / 86400000)
+      : 9999;
+
+    // Don't add penalty if client paid within last 7 days
+    if(daysSinceLastRep < 7) return;
+
+    // Check how many weekly penalty cycles have elapsed vs applied
+    const penaltyCycles = Math.floor(daysOverdue / 7);
+    const appliedPenalties = (loan.audit||[]).filter(a => a.type === 'penalty').length;
+    if(penaltyCycles <= appliedPenalties) return; // already up to date
+
+    const pen = +(s.penaltyRate || 50);
+    arr[i].balance   = +(arr[i].balance   || 0) + pen;
+    arr[i].penalties = +(arr[i].penalties || 0) + pen;
+    arr[i].audit = [...(arr[i].audit||[]), {
+      ts: now(), by:'system', type:'penalty',
+      note:`Overdue penalty ₵${pen} (${daysOverdue}d overdue, no payment in ${daysSinceLastRep}d)`
+    }];
+    pushNotif(loan.agentId, 'LOAN_OVERDUE',
+      `Overdue penalty ₵${pen} added to ${loan.clientName}'s loan`);
+    changed = true;
   });
-  if(changed) set(K.loans,arr);
+
+  if(changed) set(K.loans, arr);
 }
 
 /* ====================================================
    SETTINGS
    ==================================================== */
 function loadSettings(){
-  const s=settings();
+  const s = settings();
   const si=document.getElementById('settInterest');
   const sp=document.getElementById('settPenalty');
   const sf=document.getElementById('settFrequency');
-  if(si) si.value=s.interestRate||10;
-  if(sp) sp.value=s.penaltyRate||50;
-  if(sf) sf.value=s.paymentFrequency||3;
+  const spe=document.getElementById('settPenaltyEnabled');
+  if(si) si.value = s.interestRate||10;
+  if(sp) sp.value = s.penaltyRate||50;
+  if(sf) sf.value = s.paymentFrequency||3;
+  if(spe){
+    const enabled = s.penaltyEnabled !== false;
+    spe.checked = enabled;
+    updateToggleUI(enabled);
+  }
 }
+function updateToggleUI(on){
+  const track = document.getElementById('toggleTrack');
+  const thumb = document.getElementById('toggleThumb');
+  if(!track||!thumb) return;
+  track.style.background = on ? 'linear-gradient(135deg,var(--accent),var(--accent-2))' : 'rgba(255,255,255,0.1)';
+  thumb.style.transform   = on ? 'translateX(20px)' : 'translateX(0)';
+}
+document.addEventListener('DOMContentLoaded',()=>{
+  const spe = document.getElementById('settPenaltyEnabled');
+  if(spe) spe.addEventListener('change',()=>updateToggleUI(spe.checked));
+});
 document.getElementById('settingsForm').addEventListener('submit',e=>{
   e.preventDefault();
+  const speEl = document.getElementById('settPenaltyEnabled');
   set(K.settings,{
     interestRate:+document.getElementById('settInterest').value,
     penaltyRate:+document.getElementById('settPenalty').value,
-    paymentFrequency:+document.getElementById('settFrequency').value
+    paymentFrequency:+document.getElementById('settFrequency').value,
+    penaltyEnabled: speEl ? speEl.checked : true
   });
   toast('Settings saved');
 });
@@ -2286,17 +2432,31 @@ window.restoreAgent = id=>{
 /* ====================================================
    ADD LOAN FORM
    ==================================================== */
-function setupPassportPreview(fileInputId,previewId){
-  const inp=document.getElementById(fileInputId);
-  const img=document.getElementById(previewId);
+function setupPassportPreview(fileInputId, previewId, statusId){
+  const inp = document.getElementById(fileInputId);
+  const img = document.getElementById(previewId);
   if(!inp||!img) return;
-  inp.addEventListener('change',()=>{
-    const f=inp.files[0];
-    if(f){ const fr=new FileReader(); fr.onload=e=>{img.src=e.target.result;img.style.display='block';}; fr.readAsDataURL(f); }
+  inp.addEventListener('change', ()=>{
+    const f = inp.files[0];
+    if(!f) return;
+    // Validate size
+    if(f.size > 5*1024*1024){ toast('Image too large — max 5MB','error'); inp.value=''; return; }
+    const fr = new FileReader();
+    fr.onload = e => {
+      img.src = e.target.result;
+      img.style.display = 'block';
+      lucide.createIcons();
+      const statusEl = statusId ? document.getElementById(statusId) : null;
+      if(statusEl){ statusEl.style.display='flex'; lucide.createIcons({elements:[statusEl]}); }
+      // Highlight zone
+      const zone = inp.closest('label') || inp.closest('.passport-zone');
+      if(zone){ zone.style.borderColor='var(--accent)'; zone.style.background='rgba(14,165,233,0.06)'; }
+    };
+    fr.readAsDataURL(f);
   });
 }
-setupPassportPreview('aln_passport','aln_passportPreview');
-setupPassportPreview('eln_passport','eln_passportPreview');
+setupPassportPreview('aln_passport','aln_passportPreview','aln_uploadStatus');
+setupPassportPreview('eln_passport','eln_passportPreview',null);
 
 /* Auto-format Ghana Card as user types: GHA-XXXXXXXXX-X */
 function setupGhanaCardAutoFormat(inputId){
@@ -2351,10 +2511,14 @@ document.getElementById('formAddLoan').addEventListener('submit',async e=>{
       passportFile:document.getElementById('aln_passport').files[0]||null
     }, currentUser.id);
     if(r.success){
-      toast('Loan application submitted');
+      toast('Loan application submitted ✓');
       closeModal('modalAddLoan');
       document.getElementById('formAddLoan').reset();
       document.getElementById('aln_passportPreview').style.display='none';
+      const statusEl=document.getElementById('aln_uploadStatus');
+      if(statusEl) statusEl.style.display='none';
+      const zone=document.getElementById('addPassportZone');
+      if(zone){ zone.style.borderColor=''; zone.style.background=''; }
       refreshAll();
     }
   }catch(err){ toast(err.message||'Error','error'); }
@@ -2434,10 +2598,34 @@ window.deleteLoanUI = id=>{ if(!confirm('Permanently delete this loan?')) return
    REPAYMENT MODAL
    ==================================================== */
 window.openRepayment = id=>{
-  const loan=findLoan(id); if(!loan||loan.status==='completed') return toast('Loan is not active','error');
+  const loan=findLoan(id);
+  if(!loan) return toast('Loan not found','error');
+  if(loan.status==='completed') return toast('This loan is already fully paid','info');
+  if(!['active','overdue'].includes(loan.status)) return toast('Loan must be active to accept repayment','error');
   document.getElementById('rep_loanId').value=id;
   document.getElementById('rep_amount').value='';
   document.getElementById('repBalanceAmt').textContent=money(loan.balance);
+  // Show client info in modal
+  const infoEl=document.getElementById('repClientInfo');
+  if(infoEl){
+    const pct=loan.amount+loan.interest>0?Math.round(((loan.amount+loan.interest-loan.balance)/(loan.amount+loan.interest))*100):0;
+    infoEl.innerHTML=`
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;padding:12px;background:rgba(255,255,255,0.03);border-radius:var(--radius-sm);border:1px solid var(--border)">
+        ${loan.passportUrl?`<img src="${loan.passportUrl}" style="width:44px;height:44px;border-radius:50%;object-fit:cover;border:2px solid var(--border-hi);flex-shrink:0"/>`:`<div style="width:44px;height:44px;border-radius:50%;background:var(--grad-hero);display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:800;color:#fff;flex-shrink:0">${(loan.clientName||'?')[0].toUpperCase()}</div>`}
+        <div style="flex:1;min-width:0">
+          <div style="font-weight:700;font-size:15px">${escHtml(loan.clientName)}</div>
+          <div class="micro">${escHtml(loan.ghanaCard)} · ${loanTypeBadge(loan.loanType||'personal')}</div>
+          <div style="margin-top:6px">
+            <div style="height:5px;background:rgba(255,255,255,0.08);border-radius:99px;overflow:hidden">
+              <div style="height:100%;width:${pct}%;background:linear-gradient(90deg,var(--accent),var(--success));border-radius:99px;transition:width 0.6s ease"></div>
+            </div>
+            <div class="micro" style="margin-top:3px">${pct}% repaid · ${money(loan.balance)} remaining</div>
+          </div>
+        </div>
+        ${loan.status==='overdue'?'<span class="badge badge-overdue">OVERDUE</span>':''}
+      </div>`;
+    lucide.createIcons({elements:[infoEl]});
+  }
   openModal('modalRepayment');
 };
 document.getElementById('formRepayment').addEventListener('submit',e=>{
@@ -2453,6 +2641,32 @@ document.getElementById('formRepayment').addEventListener('submit',e=>{
     openReceipt('repayment',{...reps().find(x=>x.id===r.repId)});
     refreshAll();
   } else toast(r.message||'Error','error');
+});
+
+/* Live balance preview on amount input */
+document.getElementById('rep_amount').addEventListener('input',function(){
+  const loanId = document.getElementById('rep_loanId').value;
+  const amount = +this.value;
+  const hint   = document.getElementById('rep_afterBalance');
+  const loan   = findLoan(loanId);
+  if(!loan||!hint) return;
+  if(amount>0&&amount<=+loan.balance){
+    const after = Math.max(0,+loan.balance-amount);
+    hint.innerHTML = `<span style="color:var(--success)">✓ Balance after payment: <strong>${money(after)}</strong></span>`;
+  } else if(amount>+loan.balance){
+    hint.innerHTML = `<span style="color:var(--danger)">✗ Exceeds balance of ${money(loan.balance)}</span>`;
+  } else { hint.textContent=''; }
+});
+
+/* Auto-fill full settlement amount */
+document.getElementById('rep_type').addEventListener('change',function(){
+  const loanId=document.getElementById('rep_loanId').value;
+  const loan=findLoan(loanId);
+  if(!loan) return;
+  if(this.value==='full'){
+    document.getElementById('rep_amount').value=(+loan.balance).toFixed(2);
+    document.getElementById('rep_amount').dispatchEvent(new Event('input'));
+  }
 });
 
 /* PAYSTACK */
@@ -2610,6 +2824,15 @@ function openReceipt(type,data){
 }
 window.openReceiptForRep = id=>{ const rep=reps().find(r=>r.id===id); if(rep) openReceipt('repayment',rep); };
 
+document.getElementById('printReceiptBtn').addEventListener('click',()=>{
+  const content = document.getElementById('receiptContent').innerHTML;
+  const win = window.open('','_blank','width=600,height=800');
+  win.document.write(`<!DOCTYPE html><html><head><title>EBA Receipt</title>
+    <style>body{font-family:sans-serif;padding:20px;} @media print{body{margin:0;}}</style>
+    </head><body>${content}<script>window.onload=()=>{window.print();window.close()}<\/script></body></html>`);
+  win.document.close();
+});
+
 document.getElementById('downloadReceiptBtn').addEventListener('click',()=>{
   const {jsPDF}=window.jspdf;
   const doc=new jsPDF();
@@ -2764,16 +2987,38 @@ function loanTypeBadge(type){
 }
 
 function adminActions(loan,role){
-  let btns=`<button class="btn btn-xs btn-ghost" onclick="openLoanDetails('${loan.id}')"><span data-lucide="eye" style="width:12px;height:12px"></span></button>`;
+  let btns=`<button class="btn btn-xs btn-ghost" onclick="openLoanDetails('${loan.id}')" title="View Details"><span data-lucide="eye" style="width:12px;height:12px"></span></button>`;
   if(role==='admin'){
-    if(['pending','correction'].includes(loan.status)) btns+=`<button class="btn btn-xs btn-success" onclick="openApprove('${loan.id}')"><span data-lucide="check" style="width:12px;height:12px"></span></button><button class="btn btn-xs btn-danger" onclick="rejectLoanUI('${loan.id}')"><span data-lucide="x" style="width:12px;height:12px"></span></button>`;
-    if(loan.status==='active'||loan.status==='overdue') btns+=`<button class="btn btn-xs btn-warn" onclick="takedownLoanUI('${loan.id}')"><span data-lucide="alert-triangle" style="width:12px;height:12px"></span></button>`;
-    btns+=`<button class="btn btn-xs btn-ghost" onclick="openEditLoan('${loan.id}')"><span data-lucide="edit-2" style="width:12px;height:12px"></span></button>`;
-    btns+=`<button class="btn btn-xs btn-danger" onclick="deleteLoanUI('${loan.id}')"><span data-lucide="trash-2" style="width:12px;height:12px"></span></button>`;
+    if(['pending','correction'].includes(loan.status)){
+      btns+=`<button class="btn btn-xs btn-success" onclick="openApprove('${loan.id}')" title="Approve"><span data-lucide="check" style="width:12px;height:12px"></span></button>`;
+      btns+=`<button class="btn btn-xs btn-danger" onclick="rejectLoanUI('${loan.id}')" title="Reject"><span data-lucide="x" style="width:12px;height:12px"></span></button>`;
+    }
+    if(loan.status==='active')  btns+=`<button class="btn btn-xs btn-warn" onclick="takedownLoanUI('${loan.id}')" title="Takedown for correction"><span data-lucide="alert-triangle" style="width:12px;height:12px"></span></button>`;
+    if(loan.status==='overdue') btns+=`<button class="btn btn-xs btn-success" onclick="resetToActiveUI('${loan.id}')" title="Reset to Active — remove overdue flag"><span data-lucide="refresh-ccw" style="width:12px;height:12px"></span></button>`;
+    btns+=`<button class="btn btn-xs btn-ghost" onclick="openEditLoan('${loan.id}')" title="Edit"><span data-lucide="edit-2" style="width:12px;height:12px"></span></button>`;
+    btns+=`<button class="btn btn-xs btn-danger" onclick="deleteLoanUI('${loan.id}')" title="Delete"><span data-lucide="trash-2" style="width:12px;height:12px"></span></button>`;
   }
-  if((loan.status==='active'||loan.status==='overdue')) btns+=`<button class="btn btn-xs btn-primary" onclick="openRepayment('${loan.id}')"><span data-lucide="repeat" style="width:12px;height:12px"></span></button>`;
+  if(['active','overdue'].includes(loan.status)){
+    btns+=`<button class="btn btn-xs btn-primary" onclick="openRepayment('${loan.id}')" title="Record Repayment"><span data-lucide="repeat" style="width:12px;height:12px"></span></button>`;
+  }
   return `<div style="display:flex;gap:4px;flex-wrap:wrap">${btns}</div>`;
 }
+
+/* Admin can manually reset overdue → active */
+window.resetToActiveUI = id => {
+  const loan = findLoan(id);
+  if(!loan) return;
+  if(!confirm(`Reset "${loan.clientName}" from OVERDUE back to ACTIVE?
+This removes the overdue flag without clearing penalties already applied.`)) return;
+  const today = new Date(); today.setMonth(today.getMonth()+(+(settings().paymentFrequency)||3));
+  updateLoan(id,{
+    status:'active',
+    nextPaymentDate: today.toISOString(),
+    audit:[...(loan.audit||[]),{ts:now(),by:currentUser?.id||'admin',type:'reset',note:'Admin reset: overdue → active'}]
+  });
+  toast('Loan reset to Active','info');
+  refreshAll();
+};
 
 function renderAdminDash(){
   const allLoans=loans(); const allReps=reps(); const allAgents=agents().filter(a=>!a.deleted);
@@ -2951,14 +3196,24 @@ function renderAllReps(){
 function renderAgents(){
   const active=agents().filter(a=>!a.deleted);
   const deleted=agents().filter(a=>a.deleted);
-  document.getElementById('agentsBody').innerHTML=active.map(a=>`
-    <tr>
-      <td><strong>${escHtml(a.name)}</strong></td>
-      <td>${escHtml(a.email)}</td>
+  const agentLoanMap = {};
+  loans().forEach(l=>{ if(!agentLoanMap[l.agentId]) agentLoanMap[l.agentId]={total:0,active:0,volume:0}; agentLoanMap[l.agentId].total++; if(l.status==='active'||l.status==='overdue') agentLoanMap[l.agentId].active++; agentLoanMap[l.agentId].volume+=+l.amount; });
+  document.getElementById('agentsBody').innerHTML=active.map(a=>{
+    const stats=agentLoanMap[a.id]||{total:0,active:0,volume:0};
+    const initials=(a.name||'?').split(' ').map(w=>w[0]||'').join('').toUpperCase().slice(0,2);
+    return `<tr>
+      <td>
+        <div style="display:flex;align-items:center;gap:10px">
+          <div style="width:36px;height:36px;border-radius:50%;background:var(--grad-hero);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;color:#fff;flex-shrink:0">${initials}</div>
+          <div><strong>${escHtml(a.name)}</strong><div class="micro">${escHtml(a.email)}</div></div>
+        </div>
+      </td>
       <td>${escHtml(a.phone||'—')}</td>
-      <td><span class="text-accent">${a.loansProcessed||0}</span></td>
+      <td><span style="font-weight:700;color:var(--accent)">${stats.total}</span> <span class="micro">total</span> · <span style="color:var(--success)">${stats.active}</span> <span class="micro">active</span></td>
+      <td style="color:var(--gold);font-weight:600">${money(stats.volume)}</td>
       <td><button class="btn btn-xs btn-danger" onclick="deleteAgent('${a.id}')"><span data-lucide="user-x" style="width:12px;height:12px"></span> Deactivate</button></td>
-    </tr>`).join('')||'<tr><td colspan="5" class="empty-state"><p>No agents</p></td></tr>';
+    </tr>`;
+  }).join('')||'<tr><td colspan="5"><div class="empty-state"><p>No agents</p></div></td></tr>';
   document.getElementById('deletedAgentsBody').innerHTML=deleted.map(a=>`
     <tr>
       <td><strong>${escHtml(a.name)}</strong></td>

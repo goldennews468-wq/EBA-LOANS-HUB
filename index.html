@@ -823,7 +823,7 @@
       <div class="login-hero-divider"></div>
       <div class="lhs"><div class="num">5000+</div><div class="lbl">Active Clients</div></div>
       <div class="login-hero-divider"></div>
-      <div class="lhs"><div class="num">16</div><div class="lbl">Regions Covered</div></div>
+      <div class="lhs"><div class="num">99%</div><div class="lbl">Regions Covered</div></div>
     </div>
   </div>
 
@@ -1180,6 +1180,9 @@
         </div>
         <div class="card">
           <div class="card-body">
+            <div class="filter-row">
+              <input class="form-control" id="filterPendingSearch" placeholder="Search client / Ghana Card…" style="max-width:280px" oninput="renderPendingLoans()"/>
+            </div>
             <div class="table-wrap">
               <table>
                 <thead><tr><th>Client</th><th>Ghana Card</th><th>Amount</th><th>Interest</th><th>Type</th><th>Agent</th><th>Loan Date</th><th>Status</th><th>Actions</th></tr></thead>
@@ -1211,7 +1214,7 @@
             </div>
             <div class="table-wrap">
               <table>
-                <thead><tr><th>Client</th><th>Ghana Card</th><th>Type</th><th>Agent</th><th>Amount</th><th>Balance</th><th>Loan Date</th><th>Status</th><th>Actions</th></tr></thead>
+                <thead><tr><th>Client</th><th>Ghana Card</th><th>Type</th><th>Agent</th><th>Amount</th><th>Balance</th><th>Loan Date</th><th>Next Payment</th><th>Status</th><th>Actions</th></tr></thead>
                 <tbody id="allLoansBody"></tbody>
               </table>
             </div>
@@ -1226,8 +1229,9 @@
         </div>
         <div class="card">
           <div class="card-body">
-            <div class="filter-row">
+            <div class="filter-row" style="justify-content:space-between;align-items:center">
               <input class="form-control" id="filterRepSearch" placeholder="Search client / loan ID…" style="max-width:280px"/>
+              <div id="repsTotalLine" class="micro" style="color:var(--text-2)"></div>
             </div>
             <div class="table-wrap">
               <table>
@@ -1296,21 +1300,19 @@
                   <div class="form-hint">Next payment interval</div>
                 </div>
               </div>
-              <div style="margin-top:16px;display:flex;align-items:center;gap:12px;padding:14px;background:rgba(255,255,255,0.03);border-radius:var(--radius-sm);border:1px solid var(--border)">
-                <label class="toggle-wrap" style="display:flex;align-items:center;gap:10px;cursor:pointer">
-                  <div style="position:relative;display:inline-block;width:44px;height:24px">
-                    <input type="checkbox" id="settPenaltyEnabled" style="opacity:0;width:0;height:0;position:absolute"/>
-                    <span id="toggleTrack" style="position:absolute;cursor:pointer;inset:0;background:rgba(255,255,255,0.1);border-radius:99px;transition:0.3s;border:1px solid var(--border-hi)"></span>
-                    <span id="toggleThumb" style="position:absolute;height:18px;width:18px;left:3px;bottom:3px;background:#fff;border-radius:50%;transition:0.3s"></span>
-                  </div>
-                  <span style="font-size:13px;font-weight:600">Enable Auto-Penalties for Overdue Loans</span>
-                </label>
-                <span class="micro" style="margin-left:auto">Penalty applied after 7-day grace period, only if no payment made</span>
-              </div>
+
               <div style="margin-top:16px">
                 <button type="submit" class="btn btn-primary"><span data-lucide="save" style="width:14px;height:14px"></span> Save Settings</button>
               </div>
             </form>
+          </div>
+        </div>
+        <div class="card" style="margin-bottom:0">
+          <div class="card-header"><div class="card-title" style="color:var(--gold)">💡 Important Note — Paystack Business Name</div></div>
+          <div class="card-body">
+            <p style="font-size:13px;color:var(--text-2);line-height:1.7">To display <strong>EBA LOANS HUB</strong> as the merchant name on the Paystack payment popup (instead of the account holder's name), log into your Paystack dashboard and navigate to:</p>
+            <p style="margin-top:8px;padding:10px 14px;background:rgba(255,255,255,0.04);border-radius:var(--radius-sm);font-size:12px;font-family:monospace;color:var(--accent)">dashboard.paystack.com → Settings → Business Information → Business Name</p>
+            <p style="margin-top:8px;font-size:12px;color:var(--text-3)">Set it to <strong style="color:var(--text)">EBA LOANS HUB</strong> — this affects all payment popups, receipts and emails sent to customers.</p>
           </div>
         </div>
         <div class="danger-zone">
@@ -1888,21 +1890,23 @@ document.querySelectorAll('.modal-overlay').forEach(mo=>{
 /* ====================================================
    SUPABASE PASSPORT UPLOAD
    ==================================================== */
-/* Convert image file to base64 data URL (works offline, no Supabase needed) */
-function fileToBase64(file){
-  return new Promise((resolve,reject)=>{
-    // Resize/compress to max 400x400 before storing
+/* Compress image to small base64 for cross-device Firebase storage
+   Target: <25KB — portrait crop 200x200px at 70% JPEG quality */
+function fileToBase64(file, maxPx=200, quality=0.70){
+  return new Promise((resolve, reject)=>{
     const reader = new FileReader();
     reader.onload = e => {
       const img = new Image();
       img.onload = () => {
-        const MAX = 400;
-        let w = img.width, h = img.height;
-        if(w>MAX||h>MAX){ const r=MAX/Math.max(w,h); w=Math.round(w*r); h=Math.round(h*r); }
+        // Square crop from center for passport-style image
+        const side = Math.min(img.width, img.height);
+        const sx   = (img.width  - side) / 2;
+        const sy   = (img.height - side) / 2;
         const canvas = document.createElement('canvas');
-        canvas.width=w; canvas.height=h;
-        canvas.getContext('2d').drawImage(img,0,0,w,h);
-        resolve(canvas.toDataURL('image/jpeg',0.82));
+        canvas.width  = maxPx;
+        canvas.height = maxPx;
+        canvas.getContext('2d').drawImage(img, sx, sy, side, side, 0, 0, maxPx, maxPx);
+        resolve(canvas.toDataURL('image/jpeg', quality));
       };
       img.onerror = reject;
       img.src = e.target.result;
@@ -1913,28 +1917,28 @@ function fileToBase64(file){
 }
 
 async function uploadPassport(file, loanId){
-  // Path 1: Try Supabase if available and initialised
+  // Path 1 — Supabase CDN (best for cross-device, no size limits)
   if(sbClient){
     try{
-      const ext = (file.name||'jpg').split('.').pop().toLowerCase()||'jpg';
+      const ext  = (file.name||'jpg').split('.').pop().toLowerCase() || 'jpg';
       const path = `passports/${loanId}_${uid()}.${ext}`;
-      const { error } = await sbClient.storage.from('passports')
-        .upload(path, file, {cacheControl:'3600', upsert:true});
+      const { error } = await sbClient.storage
+        .from('passports')
+        .upload(path, file, { cacheControl:'3600', upsert:true });
       if(!error){
-        const { data:{publicUrl} } = sbClient.storage.from('passports').getPublicUrl(path);
-        if(publicUrl) return publicUrl;
+        const { data:{ publicUrl } } = sbClient.storage.from('passports').getPublicUrl(path);
+        if(publicUrl && publicUrl.length > 10) return publicUrl;
       }
-      console.warn('Supabase upload failed, falling back to base64:', error?.message);
-    }catch(e){ console.warn('Supabase error, using base64 fallback:', e.message); }
+      console.warn('Supabase upload issue, using base64:', error?.message);
+    }catch(e){ console.warn('Supabase unavailable:', e.message); }
   }
-  // Path 2: Fallback — compress and encode as base64 data URL
-  // Stored directly in Firebase with the loan record
+  // Path 2 — Base64 fallback (stored inside Firebase loan object)
+  // Compressed to ~15-20KB so it syncs reliably across devices via Firebase
   try{
-    const dataUrl = await fileToBase64(file);
-    return dataUrl; // Store as data URL — works always
+    return await fileToBase64(file, 200, 0.68);
   }catch(e){
-    console.warn('Base64 conversion failed:', e);
-    return ''; // Don't block loan creation over a photo
+    console.warn('Image compression failed:', e);
+    return '';
   }
 }
 
@@ -1967,15 +1971,40 @@ async function waitFb(ms=8000){
 
 function attachRealtimeListeners(){
   if(!window.db) return;
+  // Detach any existing listeners first to prevent duplicates
   [K.users,K.agents,K.loans,K.reps,K.notifs,K.settings].forEach(k=>{
-    firebase.database().ref('/'+k).on('value',snap=>{
-      if(snap.exists()){
-        try{ localStorage.setItem(k,JSON.stringify(snap.val())); }catch(e){console.warn(e);}
-      }
-      /* Refresh ALL views — both admin and agent dashboards stay in sync */
-      if(currentUser) refreshAll();
-    });
+    try{ firebase.database().ref('/'+k).off(); }catch(e){}
   });
+  [K.users,K.agents,K.loans,K.reps,K.notifs,K.settings].forEach(k=>{
+    firebase.database().ref('/'+k).on('value', snap=>{
+      if(snap.exists()){
+        const val = snap.val();
+        // Always overwrite localStorage with Firebase truth
+        try{ localStorage.setItem(k, JSON.stringify(val)); }catch(e){console.warn('ls write fail',e);}
+      }
+      // Debounce refreshAll to prevent UI thrashing when multiple keys update at once
+      if(currentUser){
+        clearTimeout(window._refreshDebounce);
+        window._refreshDebounce = setTimeout(()=>refreshAll(), 80);
+      }
+    }, err=>{ console.warn('Firebase listener error on', k, err); });
+  });
+}
+
+/* Force pull all keys from Firebase and refresh — call this to force sync */
+async function forceSyncFromFirebase(){
+  if(!window.db) return;
+  try{
+    const snap = await firebase.database().ref('/').get();
+    if(!snap.exists()) return;
+    const data = snap.val()||{};
+    [K.users,K.agents,K.loans,K.reps,K.notifs,K.settings].forEach(k=>{
+      if(data[k] !== undefined){
+        try{ localStorage.setItem(k, JSON.stringify(data[k])); }catch(e){}
+      }
+    });
+    refreshAll();
+  }catch(e){ console.warn('forceSyncFromFirebase error',e); }
 }
 
 async function seedRemote(){
@@ -2316,79 +2345,31 @@ function pushNotif(userId,title,body){
   set(K.notifs,arr);
 }
 
-/* OVERDUE CHECK — clean, accurate, penalty-safe
-   Rules:
-   1. If balance <= 0  → force 'completed', never overdue
-   2. If no nextPaymentDate → skip (not yet disbursed)
-   3. If nextPaymentDate is in the future → ensure status is 'active'
-   4. If nextPaymentDate is past AND balance > 0 → mark 'overdue'
-   5. Penalties only apply when:
-      - Loan has been overdue > 7 days with no repayment recorded
-        in that same 7-day window (prevents double-penalising)
-      - penaltyEnabled must be true in settings
+/* OVERDUE CHECK — status-only, no penalty mutations
+   Simply marks loans active/overdue/completed based on dates and balance.
+   No automatic penalty charges are applied to the balance.
 */
 function checkOverdue(){
-  const s = settings();
-  const penaltyEnabled = s.penaltyEnabled !== false; // default on unless explicitly off
   const arr = loans();
   let changed = false;
   const today = new Date(); today.setHours(0,0,0,0);
 
   arr.forEach((loan, i) => {
-    // Rule 1 — balance cleared → completed
-    if(+loan.balance <= 0 && loan.status !== 'completed' && loan.status !== 'pending' && loan.status !== 'rejected' && loan.status !== 'correction'){
+    // Balance zero → completed
+    if(+loan.balance <= 0 && !['completed','pending','rejected','correction'].includes(loan.status)){
       arr[i].status = 'completed';
       changed = true;
       return;
     }
-    // Only process active / overdue loans that have been disbursed
     if(!['active','overdue'].includes(loan.status)) return;
-    if(!loan.nextPaymentDate) return;
-    if(+loan.balance <= 0) return; // already handled above
+    if(!loan.nextPaymentDate || +loan.balance <= 0) return;
 
     const next = new Date(loan.nextPaymentDate); next.setHours(0,0,0,0);
-
     if(next >= today){
-      // Not yet due — ensure active
       if(loan.status === 'overdue'){ arr[i].status = 'active'; changed = true; }
-      return;
+    } else {
+      if(loan.status === 'active'){ arr[i].status = 'overdue'; changed = true; }
     }
-
-    // Past due date — mark overdue
-    if(loan.status === 'active'){ arr[i].status = 'overdue'; changed = true; }
-
-    // Penalty: only if enabled AND no repayment in last 7 days
-    if(!penaltyEnabled) return;
-    const daysOverdue = Math.floor((today - next) / 86400000);
-    if(daysOverdue < 7) return; // grace period — first week no penalty
-
-    // Check last repayment date for this loan
-    const loanReps = (get(K.reps)||[]).filter(r => r.loanId === loan.id);
-    const lastRepDate = loanReps.length
-      ? new Date(Math.max(...loanReps.map(r => new Date(r.date).getTime())))
-      : null;
-    const daysSinceLastRep = lastRepDate
-      ? Math.floor((today - lastRepDate) / 86400000)
-      : 9999;
-
-    // Don't add penalty if client paid within last 7 days
-    if(daysSinceLastRep < 7) return;
-
-    // Check how many weekly penalty cycles have elapsed vs applied
-    const penaltyCycles = Math.floor(daysOverdue / 7);
-    const appliedPenalties = (loan.audit||[]).filter(a => a.type === 'penalty').length;
-    if(penaltyCycles <= appliedPenalties) return; // already up to date
-
-    const pen = +(s.penaltyRate || 50);
-    arr[i].balance   = +(arr[i].balance   || 0) + pen;
-    arr[i].penalties = +(arr[i].penalties || 0) + pen;
-    arr[i].audit = [...(arr[i].audit||[]), {
-      ts: now(), by:'system', type:'penalty',
-      note:`Overdue penalty ₵${pen} (${daysOverdue}d overdue, no payment in ${daysSinceLastRep}d)`
-    }];
-    pushNotif(loan.agentId, 'LOAN_OVERDUE',
-      `Overdue penalty ₵${pen} added to ${loan.clientName}'s loan`);
-    changed = true;
   });
 
   if(changed) set(K.loans, arr);
@@ -2402,35 +2383,17 @@ function loadSettings(){
   const si=document.getElementById('settInterest');
   const sp=document.getElementById('settPenalty');
   const sf=document.getElementById('settFrequency');
-  const spe=document.getElementById('settPenaltyEnabled');
   if(si) si.value = s.interestRate||10;
   if(sp) sp.value = s.penaltyRate||50;
   if(sf) sf.value = s.paymentFrequency||3;
-  if(spe){
-    const enabled = s.penaltyEnabled !== false;
-    spe.checked = enabled;
-    updateToggleUI(enabled);
-  }
 }
-function updateToggleUI(on){
-  const track = document.getElementById('toggleTrack');
-  const thumb = document.getElementById('toggleThumb');
-  if(!track||!thumb) return;
-  track.style.background = on ? 'linear-gradient(135deg,var(--accent),var(--accent-2))' : 'rgba(255,255,255,0.1)';
-  thumb.style.transform   = on ? 'translateX(20px)' : 'translateX(0)';
-}
-document.addEventListener('DOMContentLoaded',()=>{
-  const spe = document.getElementById('settPenaltyEnabled');
-  if(spe) spe.addEventListener('change',()=>updateToggleUI(spe.checked));
-});
+
 document.getElementById('settingsForm').addEventListener('submit',e=>{
   e.preventDefault();
-  const speEl = document.getElementById('settPenaltyEnabled');
   set(K.settings,{
     interestRate:+document.getElementById('settInterest').value,
     penaltyRate:+document.getElementById('settPenalty').value,
-    paymentFrequency:+document.getElementById('settFrequency').value,
-    penaltyEnabled: speEl ? speEl.checked : true
+    paymentFrequency:+document.getElementById('settFrequency').value
   });
   toast('Settings saved');
 });
@@ -2825,7 +2788,13 @@ document.getElementById('formEditRep').addEventListener('submit',e=>{
   if(r.success){ toast('Repayment updated'); closeModal('modalEditRep'); refreshAll(); }
   else toast(r.message||'Error','error');
 });
-window.deleteRepUI = id=>{ if(!confirm('Delete this repayment? Balance will be restored.')) return; const r=deleteRepayment(id); if(r.success){ toast('Repayment deleted','info'); refreshAll(); } };
+window.deleteRepUI = id=>{
+  const rep=reps().find(r=>r.id===id);
+  const msg = rep ? `Delete this ${rep.type} repayment of ${money(rep.amount)}?\nThe loan balance will be restored.` : 'Delete this repayment?';
+  if(!confirm(msg)) return;
+  const r=deleteRepayment(id);
+  if(r.success){ toast('Repayment deleted — balance restored','info'); refreshAll(); }
+};
 
 /* ====================================================
    LOAN DETAILS
@@ -2849,12 +2818,13 @@ window.openLoanDetails = id=>{
           <div class="detail-item"><div class="detail-label">Interest</div><div class="detail-value">${money(loan.interest)}</div></div>
           <div class="detail-item"><div class="detail-label">Total Payable</div><div class="detail-value">${money(+loan.amount+ +loan.interest)}</div></div>
           <div class="detail-item"><div class="detail-label">Remaining Balance</div><div class="detail-value text-danger">${money(loan.balance)}</div></div>
-          <div class="detail-item"><div class="detail-label">Penalties</div><div class="detail-value">${money(loan.penalties||0)}</div></div>
+
           <div class="detail-item"><div class="detail-label">Agent</div><div class="detail-value">${escHtml(agentName(loan.agentId))}</div></div>
           <div class="detail-item"><div class="detail-label">Loan Date</div><div class="detail-value">${new Date(loan.loanDate||loan.createdAt).toLocaleDateString('en-GH',{day:'2-digit',month:'long',year:'numeric'})}</div></div>
           <div class="detail-item"><div class="detail-label">Loan Type</div><div class="detail-value">${loanTypeBadge(loan.loanType||'personal')}</div></div>
           <div class="detail-item"><div class="detail-label">Applied On</div><div class="detail-value">${new Date(loan.createdAt).toLocaleDateString('en-GH',{day:'2-digit',month:'short',year:'numeric'})}</div></div>
           <div class="detail-item"><div class="detail-label">Disbursed On</div><div class="detail-value">${loan.disbursementDate?new Date(loan.disbursementDate).toLocaleDateString('en-GH',{day:'2-digit',month:'short',year:'numeric'}):'—'}</div></div>
+          <div class="detail-item"><div class="detail-label">Next Payment Due</div><div class="detail-value" style="color:${loan.nextPaymentDate&&new Date(loan.nextPaymentDate)<new Date()?'var(--danger)':'var(--success)'}">${loan.nextPaymentDate?new Date(loan.nextPaymentDate).toLocaleDateString('en-GH',{day:'2-digit',month:'short',year:'numeric'}):'—'}</div></div>
         </div>
         <div style="margin-top:14px">
           <div style="font-size:12px;color:var(--text-3);margin-bottom:6px">Repayment Progress — ${pct}%</div>
@@ -2864,9 +2834,15 @@ window.openLoanDetails = id=>{
     </div>
     <hr class="divider"/>
     <h4 style="margin-bottom:12px">Repayment History (${repList.length})</h4>
-    ${repList.length?`<div class="table-wrap"><table><thead><tr><th>Date</th><th>Amount</th><th>Type</th><th>Method</th></tr></thead><tbody>
-      ${repList.map(r=>`<tr><td>${new Date(r.date).toLocaleString()}</td><td class="text-success">${money(r.amount)}</td><td>${r.type}</td><td>${r.paymentMethod||'manual'}</td></tr>`).join('')}
-    </tbody></table></div>`:'<p class="muted" style="font-size:13px">No repayments yet</p>'}
+    ${repList.length?`<div class="table-wrap"><table><thead><tr><th>Date</th><th>Amount (₵)</th><th>Type</th><th>Method</th><th>Receipt</th></tr></thead><tbody>
+      ${repList.map(r=>`<tr>
+        <td>${new Date(r.date).toLocaleDateString('en-GH',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'})}</td>
+        <td style="color:var(--success);font-weight:700">${money(r.amount)}</td>
+        <td style="text-transform:capitalize">${r.type}</td>
+        <td><span style="font-size:10px;padding:2px 7px;border-radius:99px;background:${r.paymentMethod==='paystack'?'rgba(16,185,129,0.15)':'rgba(14,165,233,0.12)'};color:${r.paymentMethod==='paystack'?'#10b981':'var(--accent)'}">${r.paymentMethod==='paystack'?'Paystack':'Manual'}</span></td>
+        <td><button class="btn btn-xs btn-ghost" onclick="openReceiptForRep('${r.id}')">🧾</button></td>
+      </tr>`).join('')}
+    </tbody></table></div>`:'<div class="empty-state" style="padding:20px"><p>No repayments recorded yet</p></div>'}
     <hr class="divider"/>
     <h4 style="margin-bottom:12px">Audit Log</h4>
     <div class="audit-log">
@@ -2896,6 +2872,7 @@ function openReceipt(type,data){
   let html='';
   if(type==='repayment'){
     const loan=findLoan(data.loanId)||{};
+    const formattedAmt = new Intl.NumberFormat('en-GH',{minimumFractionDigits:2}).format(+data.amount||0);
     html=`
       <div class="receipt-wrapper" id="printReceipt">
         <div class="receipt-head">
@@ -2915,17 +2892,26 @@ function openReceipt(type,data){
           ${data.paystackRef?`<div class="receipt-row"><span class="label">Paystack Ref</span><span class="val">${data.paystackRef}</span></div>`:''}
         </div>
         <div class="receipt-section">
-          <h4>Client</h4>
+          <h4>Client Information</h4>
           <div class="receipt-row"><span class="label">Name</span><span class="val">${escHtml(data.clientName)}</span></div>
           <div class="receipt-row"><span class="label">Ghana Card</span><span class="val">${escHtml(loan.ghanaCard||'—')}</span></div>
+          <div class="receipt-row"><span class="label">Phone</span><span class="val">${escHtml(loan.phone||'—')}</span></div>
+          <div class="receipt-row"><span class="label">Loan Type</span><span class="val" style="text-transform:capitalize">${loan.loanType||'Personal'}</span></div>
+        </div>
+        <div class="receipt-section">
+          <h4>Payment Details</h4>
+          <div class="receipt-row"><span class="label">Loan Amount</span><span class="val">₵${new Intl.NumberFormat('en-GH',{minimumFractionDigits:2}).format(loan.amount||0)}</span></div>
+          <div class="receipt-row"><span class="label">Payment Type</span><span class="val" style="text-transform:capitalize">${data.type}</span></div>
+          <div class="receipt-row"><span class="label">Method</span><span class="val">${data.paymentMethod==='paystack'?'Paystack (Card/MoMo)':'Manual Cash'}</span></div>
+          ${data.paystackRef?`<div class="receipt-row"><span class="label">Transaction Ref</span><span class="val" style="font-size:11px;font-family:monospace">${data.paystackRef}</span></div>`:''}
         </div>
         <div class="receipt-total">
           <div style="font-size:12px;color:#888;margin-bottom:6px">AMOUNT PAID</div>
-          <div class="amount">₵${Number(data.amount).toLocaleString('en-GH',{minimumFractionDigits:2})}</div>
+          <div class="amount"><span style="font-family:serif;font-size:20px">₵</span>${formattedAmt}</div>
         </div>
         <div class="receipt-section" style="margin-top:16px">
           <h4>Loan Balance After Payment</h4>
-          <div class="receipt-row"><span class="label">Remaining Balance</span><span class="val">${money(findLoan(data.loanId)?.balance||0)}</span></div>
+          <div class="receipt-row"><span class="label">Remaining Balance</span><span class="val" style="color:#0284c7;font-weight:800">₵${new Intl.NumberFormat('en-GH',{minimumFractionDigits:2}).format(findLoan(data.loanId)?.balance||0)}</span></div>
         </div>
         <div class="receipt-footer">
           <p>Thank you for your payment to EBA LOANS HUB</p>
@@ -2953,35 +2939,46 @@ document.getElementById('downloadReceiptBtn').addEventListener('click',()=>{
   const doc=new jsPDF();
   const {type,data}=_currentReceiptData;
   const loan=type==='repayment'?findLoan(data.loanId)||{}:{};
-  // Header
-  doc.setFillColor(27,127,255);
-  doc.rect(0,0,210,38,'F');
+  // Header — Ghana flag inspired colors (green, gold, red)
+  doc.setFillColor(0, 107, 63);     // Ghana green
+  doc.rect(0,0,210,8,'F');
+  doc.setFillColor(252, 209, 22);   // Ghana gold
+  doc.rect(0,8,210,4,'F');
+  doc.setFillColor(206, 17, 38);    // Ghana red
+  doc.rect(0,12,210,4,'F');
+  doc.setFillColor(6, 132, 199);    // EBA blue
+  doc.rect(0,16,210,28,'F');
   doc.setTextColor(255,255,255);
-  doc.setFont('helvetica','bold'); doc.setFontSize(20);
-  doc.text('EBA LOANS HUB',20,18);
-  doc.setFontSize(10); doc.setFont('helvetica','normal');
-  doc.text('OFFICIAL PAYMENT RECEIPT',20,28);
-  doc.text(`Date: ${new Date(data.date).toLocaleDateString()}`,140,18);
+  doc.setFont('helvetica','bold'); doc.setFontSize(22);
+  doc.text('EBA LOANS HUB',20,32);
+  doc.setFontSize(9); doc.setFont('helvetica','normal');
+  doc.text('OFFICIAL PAYMENT RECEIPT',20,40);
+  doc.text('Tel: +233 XXX XXX XXX',140,30);
+  doc.text(`Date: ${new Date(data.date).toLocaleDateString('en-GH')}`,140,38);
   // Body
   doc.setTextColor(30,30,30);
-  let y=50;
+  let y=56;
   const row=(l,v)=>{ doc.setFont('helvetica','bold');doc.setFontSize(10);doc.text(l,20,y);doc.setFont('helvetica','normal');doc.text(String(v),100,y);y+=8; };
   doc.setFont('helvetica','bold');doc.setFontSize(12);doc.text('TRANSACTION DETAILS',20,y);y+=10;
-  row('Receipt No:',data.id);
-  row('Loan ID:',data.loanId);
-  row('Client:',data.clientName);
-  row('Ghana Card:',loan.ghanaCard||'—');
-  row('Payment Type:',data.type);
-  row('Method:',data.paymentMethod||'Manual');
-  if(data.paystackRef) row('Paystack Ref:',data.paystackRef);
+  row('Receipt No:', data.id);
+  row('Loan ID:', data.loanId.slice(-12));
+  row('Client:', data.clientName);
+  row('Ghana Card:', loan.ghanaCard||'—');
+  row('Loan Type:', loan.loanType ? (loan.loanType.charAt(0).toUpperCase()+loan.loanType.slice(1)) : 'Personal');
+  row('Payment Type:', data.type.charAt(0).toUpperCase()+data.type.slice(1));
+  row('Method:', data.paymentMethod==='paystack'?'Paystack (Card/MoMo)':'Manual Cash');
+  row('Loan Amount:', 'GHS ' + Number(loan.amount||0).toLocaleString('en-GH',{minimumFractionDigits:2}));
+  if(data.paystackRef) row('Transaction Ref:', data.paystackRef);
   y+=6;
   doc.setFillColor(240,248,255);doc.rect(15,y,180,24,'F');
   doc.setFont('helvetica','bold');doc.setFontSize(14);doc.setTextColor(27,127,255);
   doc.text('AMOUNT PAID',105,y+9,{align:'center'});
   doc.setFontSize(18);
-  doc.text(`₵${Number(data.amount).toLocaleString('en-GH',{minimumFractionDigits:2})}`,105,y+19,{align:'center'});
-  y+=32;doc.setTextColor(30,30,30);doc.setFontSize(10);
-  row('Balance After Payment:',money(findLoan(data.loanId)?.balance||0));
+  // Use "GHS" in PDF because jsPDF built-in fonts don't support ₵ (U+20B5)
+  doc.text(`GHS ${Number(data.amount).toLocaleString('en-GH',{minimumFractionDigits:2})}`,105,y+19,{align:'center'});
+  y+=32; doc.setTextColor(30,30,30); doc.setFontSize(10);
+  const balAfter = findLoan(data.loanId)?.balance||0;
+  row('Balance After Payment:', 'GHS ' + Number(balAfter).toLocaleString('en-GH',{minimumFractionDigits:2}));
   // Footer
   doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(120,120,120);
   doc.text('Thank you for choosing EBA LOANS HUB',105,270,{align:'center'});
@@ -3225,7 +3222,7 @@ function renderAdminDash(){
   const allLoans=loans(); const allReps=reps(); const allAgents=agents().filter(a=>!a.deleted);
   document.getElementById('kpiAgents').textContent=allAgents.length;
   document.getElementById('kpiTotalLoans').textContent=allLoans.length;
-  const activeLoans = allLoans.filter(l=>l.status==='active');
+  const activeLoans = allLoans.filter(l=>l.status==='active'||l.status==='overdue');
   document.getElementById('kpiActiveLoans').textContent=activeLoans.length;
   document.getElementById('kpiTotalRepaid').textContent=money(allReps.reduce((s,r)=>s+ +r.amount,0));
   // Sidebar pending badge
@@ -3267,9 +3264,10 @@ function renderAdminDash(){
       <td>${loanTypeBadge(l.loanType||'personal')}</td>
       <td>${escHtml(agentName(l.agentId))}</td>
       <td>${new Date(l.loanDate||l.createdAt).toLocaleDateString('en-GH',{day:'2-digit',month:'short',year:'numeric'})}</td>
+      <td>${l.nextPaymentDate?(()=>{const d=Math.ceil((new Date(l.nextPaymentDate)-new Date())/86400000);return d<0?`<span style="color:var(--danger);font-size:11px;font-weight:700">${Math.abs(d)}d overdue</span>`:`<span style="color:var(--success);font-size:11px">${d}d left</span>`;})():'—'}</td>
       <td>${statusBadge(l.status)}</td>
       <td>${adminActions(l,'admin')}</td>
-    </tr>`).join('')||'<tr><td colspan="8"><div class="empty-state"><p>No loans found</p></div></td></tr>';
+    </tr>`).join('')||'<tr><td colspan="8"><div class="empty-state"><span data-lucide="inbox" style="width:28px;height:28px;opacity:0.25;display:block;margin:0 auto 10px"></span><p>No loans found</p></div></td></tr>';
   // Overdue
   const over=allLoans.filter(l=>l.status==='overdue');
   document.getElementById('overdueBody').innerHTML=over.map(l=>{
@@ -3285,7 +3283,6 @@ function renderAdminDash(){
       <td style="color:var(--gold);font-weight:700">${money(l.amount)}</td>
       <td><span style="color:var(--danger);font-weight:700">${money(l.balance)}</span></td>
       <td><span style="color:var(--danger);font-weight:700;background:var(--danger-dim);padding:3px 8px;border-radius:99px;font-size:11px">${days}d</span></td>
-      <td style="color:var(--warn)">${money(l.penalties||0)}</td>
       <td>${adminActions(l,'admin')}</td>
     </tr>`;
   }).join('')||'<tr><td colspan="7" style="text-align:center;padding:24px;color:var(--text-3)">🎉 No overdue loans</td></tr>';
@@ -3300,6 +3297,13 @@ function renderAgentDash(){
   document.getElementById('agKpiPending').textContent=myLoans.filter(l=>l.status==='pending').length;
   document.getElementById('agKpiActive').textContent=myLoans.filter(l=>l.status==='active'||l.status==='overdue').length;
   document.getElementById('agKpiRepaid').textContent=money(myReps.reduce((s,r)=>s+ +r.amount,0));
+  // Update overdue badge on sidebar
+  const agOver = myLoans.filter(l=>l.status==='overdue').length;
+  const nbEl = document.getElementById('notifBadge');
+  if(nbEl){
+    const unreadN=(notifs()||[]).filter(n=>n.userId===currentUser?.id&&!n.read).length;
+    nbEl.style.display = unreadN ? 'block' : 'none';
+  }
   const recent=myLoans.slice(0,8);
   document.getElementById('agRecentBody').innerHTML=recent.map(l=>`
     <tr>
@@ -3335,7 +3339,9 @@ function renderAgentDash(){
 }
 
 function renderPendingLoans(){
-  const pending=loans().filter(l=>['pending','correction'].includes(l.status));
+  const pendingSearch=(document.getElementById('filterPendingSearch')?.value||'').toLowerCase();
+  let pending=loans().filter(l=>['pending','correction'].includes(l.status));
+  if(pendingSearch) pending=pending.filter(l=>(l.clientName||'').toLowerCase().includes(pendingSearch)||(l.ghanaCard||'').toLowerCase().includes(pendingSearch));
   document.getElementById('pendingBody').innerHTML=pending.map(l=>`
     <tr>
       <td>
@@ -3408,6 +3414,13 @@ function renderAllReps(){
         </div>
       </td>
     </tr>`;}).join('')||'<tr><td colspan="8"><div class="empty-state"><p>No repayments</p></div></td></tr>';
+  // Totals line
+  const totLine = document.getElementById('repsTotalLine');
+  if(totLine){
+    const total = list.reduce((s,r)=>s+ +r.amount,0);
+    const psTotal = list.filter(r=>r.paymentMethod==='paystack').reduce((s,r)=>s+ +r.amount,0);
+    totLine.innerHTML = `${list.length} records · Total: <strong style="color:var(--success)">${money(total)}</strong> · Paystack: <strong style="color:#10b981">${money(psTotal)}</strong>`;
+  }
   lucide.createIcons();
 }
 
@@ -3574,8 +3587,14 @@ function refreshAll(){
   lucide.createIcons();
 }
 
-document.getElementById('refreshBtn').addEventListener('click',refreshAll);
-document.getElementById('agentRefreshBtn').addEventListener('click',refreshAll);
+document.getElementById('refreshBtn').addEventListener('click',()=>{
+  toast('Syncing from server…','info');
+  forceSyncFromFirebase().then(()=>toast('Synced ✓','success'));
+});
+document.getElementById('agentRefreshBtn').addEventListener('click',()=>{
+  toast('Syncing from server…','info');
+  forceSyncFromFirebase().then(()=>toast('Synced ✓','success'));
+});
 
 /* ====================================================
    APP BOOT  — fast path: register auth listener ASAP,
